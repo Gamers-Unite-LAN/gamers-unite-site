@@ -5,8 +5,9 @@ import { useDark } from '@vueuse/core'
 
 createApp(App).mount("#app");
 
-const isDark = useDark({
-    storageKey: 'force-dark-mode', // Custom key to avoid system sync
-    onChanged: (value) => console.log(`Dark mode: ${value}`)
-  })
+// forces dark mode???
+useDark({
+  storageKey: 'force-dark-mode', // Custom key to avoid system sync
+  onChanged: (value) => console.log(`Dark mode: ${value}`)
+})
   
