@@ -41,7 +41,7 @@ import Separator from "./ui/separator/Separator.vue";
         <div class="flex flex-col gap-2">
           <h3 class="font-bold text-lg">Socials</h3>
 
-          <div class="flex gap-10">
+          <div class="flex flex-col md:flex-row gap-2 md:gap-10">
             <div class="flex flex-col gap-2">
               <div>
                 <a href="https://discord.gg/2akPpZD73v" target="_blank" class="opacity-60 hover:opacity-100">
@@ -74,6 +74,12 @@ import Separator from "./ui/separator/Separator.vue";
               <div>
                 <a href="https://www.youtube.com/@GamersUnite923" target="_blank" class="opacity-60 hover:opacity-100">
                   Youtube
+                </a>
+              </div>
+
+              <div>
+                <a href="https://www.reddit.com/r/GamersUniteLAN/" target="_blank" class="opacity-60 hover:opacity-100">
+                  Reddit
                 </a>
               </div>
             </div>
