@@ -35,14 +35,14 @@ const routeList: RouteProps[] = [
     href: "#games",
     label: "Games",
   },
-  {
+  /*{
     href: "#reviews",
     label: "Reviews",
   },
   {
     href: "#team",
     label: "Team",
-  },
+  },*/
   {
     href: "#contact",
     label: "Contact And Next Event",
@@ -95,10 +95,12 @@ const isOpen = ref<boolean>(false);
                   href="/"
                   class="flex items-center"
                 >
-                  <ChevronsDown
-                    class="bg-gradient-to-tr from-primary/70 via-primary to-primary/70 rounded-lg size-9 mr-2 border text-white"
-                  />
-                  ShadcnVue
+                  <img
+                      class="w-[3rem] mx-auto rounded-lg relative rouded-lg leading-none flex items-center"
+                      :src="'assets/Logo.png'"
+                      alt="GamersUnite Logo"
+                    />
+                  Gamers Unite!
                 </a>
               </SheetTitle>
             </SheetHeader>
