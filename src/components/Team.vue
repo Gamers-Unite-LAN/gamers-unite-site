@@ -9,10 +9,6 @@ import {
 
 import XIcon from "@/icons/XIcon.vue";
 
-import alexHeadshot from "public/team/alex.jpg";
-import billHeadshot from "public/team/bill.jpg";
-import jolyonHeadshot from "public/team/jolyon.jpg";
-
 interface TeamProps {
   imageUrl: string;
   firstName: string;
