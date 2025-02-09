@@ -72,7 +72,7 @@ const isOpen = ref<boolean>(false);
           :src="'assets/Logo.png'"
           alt="GamersUnite Logo"
         />
-      Gamers Unite!
+      Gamers Unite! LAN
     </a>
     <!-- Mobile -->
     <div class="flex items-center lg:hidden">
