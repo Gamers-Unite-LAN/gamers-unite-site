@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useTemplateRef, onMounted, nextTick, toRaw } from "vue";
+import { useTemplateRef, onMounted, nextTick } from "vue";
 import {
   Card,
   CardContent,
@@ -43,7 +43,7 @@ const teamList: TeamProps[] = [
     imageUrl: "team/jolyon.jpg",
     firstName: "Jolyon",
     lastName: "Buckle",
-    positions: ["Jolyon brings warmth to our events by welcoming newcommers and returning faces alike."],
+    positions: ["Jolyon brings warmth to our events by welcoming newcomers and returning faces alike."],
     socialNetworks: []
   },
 ];
@@ -77,7 +77,7 @@ onMounted(async () => {
     { threshold: 0.85 } // Trigger when at least 50% of the card is visible
   );
 
-  cardRefs.value?.forEach((card) => {
+  (cardRefs.value as [])?.forEach((card: any) => {
     if (!card) return;
     var cardImg = card.$el.querySelector("img");
     if(!cardImg) return;
