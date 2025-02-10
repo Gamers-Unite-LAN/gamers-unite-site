@@ -36,7 +36,7 @@
 
         <img
           class="w-full md:w-[1200px] mx-auto rounded-lg relative rouded-lg leading-none flex items-center glowing-border"
-          :src="'event-images/SetupShot.jpg'"
+          :src="'event-images/in-event-2.jpg'"
           alt="people playing games at a LAN event"
         />
 

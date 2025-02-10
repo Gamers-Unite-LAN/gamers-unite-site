@@ -1,9 +1,9 @@
-import { createApp } from "vue";
 import App from "./App.vue";
 import "./assets/index.css";
 import { useDark } from '@vueuse/core'
+import { ViteSSG } from 'vite-ssg/single-page'
 
-createApp(App).mount("#app");
+export const createApp = ViteSSG(App)
 
 // forces dark mode???
 useDark({

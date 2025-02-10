@@ -2,7 +2,6 @@
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -15,36 +14,31 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 
-import { Star } from "lucide-vue-next";
-
 interface ReviewProps {
   name: string;
-  userName: string;
   comment: string;
-  rating: number;
 }
 
 const reviewList: ReviewProps[] = [
   {
-    name: "John Doe",
-    userName: "Product Manager",
+    name: "Tobyias46",
     comment:
-      "Wow Vue + Shadcn-Vue is awesome!. This template lets me change colors, fonts and images to match my brand identity. ",
-    rating: 5.0,
+      "What a great community to be a part of",
   },
   {
-    name: "Sophia Collins",
-    userName: "Cybersecurity Analyst",
+    name: "manicjack",
     comment:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna. ",
-    rating: 4.8,
+      "I ended up making some new friends I wouldn't have met otherwise, which was such a highlight for me.",
   },
   {
-    name: "Adam Johnson",
-    userName: "Chief Technology Officer",
+    name: "kexz",
     comment:
-      "Lorem ipsum dolor sit amet,exercitation. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
-    rating: 4.9,
+      "it's not just about the games but being able to meet some brilliant people.",
+  },
+  {
+    name: "celzior",
+    comment:
+      "I really enjoying the social time alongside the general discussions that seem to stem out of you all having weird, wacky and wonderful computer systems!"
   }
 ];
 </script>
@@ -77,15 +71,7 @@ const reviewList: ReviewProps[] = [
           class="md:basis-1/2 lg:basis-1/3"
         >
           <Card class="bg-muted/50 dark:bg-card">
-            <CardContent class="pt-6 pb-0">
-              <div class="flex gap-1 pb-6">
-                <Star class="size-4 fill-primary text-primary" />
-                <Star class="size-4 fill-primary text-primary" />
-                <Star class="size-4 fill-primary text-primary" />
-                <Star class="size-4 fill-primary text-primary" />
-                <Star class="size-4 fill-primary text-primary" />
-              </div>
-
+            <CardContent class="pt-6 pb-0 h-32">
               "{{ review.comment }}"
             </CardContent>
 
@@ -93,7 +79,6 @@ const reviewList: ReviewProps[] = [
               <div class="flex flex-row items-center gap-4">
                 <div class="flex flex-col">
                   <CardTitle class="text-lg">{{ review.name }}</CardTitle>
-                  <CardDescription>{{ review.userName }}</CardDescription>
                 </div>
               </div>
             </CardHeader>

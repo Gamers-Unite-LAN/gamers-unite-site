@@ -24,27 +24,24 @@ interface SocialNetworkProps {
 
 const teamList: TeamProps[] = [
   {
-    imageUrl:
-      "https://placecats.com/300/300",
+    imageUrl: "team/bill.jpg",
     firstName: "Bill",
     lastName: "Crooks",
-    positions: ["Founding man"],
+    positions: ["Bill hosted the first LAN back in 2024, after which he brought together the first GUL team, the rest is history!"],
     socialNetworks: []
   },
   {
-    imageUrl:
-    "https://placecats.com/300/300",
+    imageUrl: "team/alex.jpg",
     firstName: "Alex",
     lastName: "Wilson",
-    positions: ["Tech man"],
+    positions: ["After attending the first LAN, joining the team soon after. He helps out with the techinal side of the events."],
     socialNetworks: []
   },
   {
-    imageUrl:
-    "https://placecats.com/300/300",
+    imageUrl: "team/jolyon.jpg",
     firstName: "Jolyon",
     lastName: "Buckle",
-    positions: ["Big man"],
+    positions: ["Jolyon brings warmth to our events by welcoming newcommers and returning faces alike."],
     socialNetworks: []
   },
 ];
