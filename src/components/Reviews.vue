@@ -33,7 +33,7 @@ const reviewList: ReviewProps[] = [
   {
     name: "kexz",
     comment:
-      "it's not just about the games but being able to meet some brilliant people.",
+      "[...] it's not just about the games but being able to meet some brilliant people.",
   },
   {
     name: "celzior",

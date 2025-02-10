@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useTemplateRef, onMounted, nextTick } from "vue";
 import {
   Card,
   CardContent,
@@ -8,6 +9,7 @@ import {
 } from "@/components/ui/card";
 
 import XIcon from "@/icons/XIcon.vue";
+
 
 interface TeamProps {
   imageUrl: string;
@@ -41,7 +43,7 @@ const teamList: TeamProps[] = [
     imageUrl: "team/jolyon.jpg",
     firstName: "Jolyon",
     lastName: "Buckle",
-    positions: ["Jolyon brings warmth to our events by welcoming newcommers and returning faces alike."],
+    positions: ["Jolyon brings warmth to our events by welcoming newcomers and returning faces alike."],
     socialNetworks: []
   },
 ];
@@ -52,6 +54,36 @@ const socialIcon = (socialName: string) => {
       return XIcon;
   }
 };
+
+// when a card has scrolled into view on mobile only, saturate the card image in view
+
+const cardRefs = useTemplateRef('cards')
+
+onMounted(async () => {
+  if (window.innerWidth > 640) return; // Only run on mobile screens
+
+  await nextTick();
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("saturate-100");
+        } else {
+          entry.target.classList.remove("saturate-100");
+        }
+      });
+    },
+    { threshold: 0.85 } // Trigger when at least 50% of the card is visible
+  );
+
+  (cardRefs.value as [])?.forEach((card: any) => {
+    if (!card) return;
+    var cardImg = card.$el.querySelector("img");
+    if(!cardImg) return;
+    observer.observe(cardImg);
+  });
+});
 </script>
 
 <template>
@@ -68,7 +100,7 @@ const socialIcon = (socialName: string) => {
     </div>
 
     <div
-      class="flex gap-8 justify-center"
+      class="flex gap-8 flex-col sm:flex-row items-center justify-center"
     >
       <Card
         v-for="{
@@ -79,6 +111,7 @@ const socialIcon = (socialName: string) => {
           socialNetworks,
         } in teamList"
         :key="imageUrl"
+        ref="cards"
         class="bg-muted/60 dark:bg-card flex flex-col h-[30rem] w-[20rem] overflow-hidden group/hoverimg"
       >
         <CardHeader class="p-0 gap-0">
@@ -86,7 +119,7 @@ const socialIcon = (socialName: string) => {
             <img
               :src="imageUrl"
               alt=""
-              class="w-full aspect-square object-cover saturate-0 transition-all duration-200 ease-linear size-full group-hover/hoverimg:saturate-100 group-hover/hoverimg:scale-[1.01]"
+              class="w-full aspect-square object-cover saturate-0 transition-all duration-200 ease-linear size-full group-hover/hoverimg:saturate-100 group-hover/hoverimg:scale-[1.01] sm:saturate-0 is-visible:saturate-100"
             />
           </div>
           <CardTitle class="py-6 pb-4 px-6"
