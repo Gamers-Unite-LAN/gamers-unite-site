@@ -13,19 +13,19 @@ export const router = createRouter({
     history: createWebHistory(),
     routes,
     scrollBehavior(to: RouteLocationNormalizedGeneric) {
+      console.log('scrollBehavior', to)
+
       if (to.hash) {
-        return {
-          el: to.hash,
-          behavior: 'smooth',
-        }
-      } 
-      
-      // Always scroll to top for routes with meta.scrollToTop
-      if (to.meta.scrollToTop) {
-        return {
-          top: 0,
-          behavior: 'smooth'
-        }
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            resolve({
+              el: `#${to.hash.replace(/^#/, '')}`,
+              behavior: 'smooth',
+            });
+          }, 300); // Adjust timing if needed
+        });
       }
+    
+      return { top: 0, behavior: 'smooth' };
     }
   })

@@ -39,27 +39,27 @@ const routeList: RouteProps[] = [
   },
   { 
     href: "/",
-    header: "#games",
+    header: "games",
     label: "Games",
   },
   {
     href: "/",
-    header: "#reviews",
+    header: "reviews",
     label: "Reviews",
   },
   {
     href: "/",
-    header: "#team",
+    header: "team",
     label: "Team",
   },
   {
     href: "/",
-    header: "#contact",
+    header: "contact",
     label: "Contact And Next Event",
   },
   {
     href: "/",
-    header: "#faq",
+    header: "faq",
     label: "FAQ",
   },
 ];
@@ -67,9 +67,23 @@ const routeList: RouteProps[] = [
 function getUrl(href: string, header?: string) {
   const to: RouteLocationAsPathGeneric = {
     path: href,
-    hash: header,
+    hash: header ? `#${header.replace(/^#/, '')}` : '',
   }
   return to;
+}
+
+function handleClick(header?: string) {
+  if (header) {
+    const targetElement = document.querySelector(`#${header}`);
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+}
+
+function handleMobileClick(header?: string) {
+  isOpen.value = false;
+  handleClick(header)
 }
 
 const isOpen = ref<boolean>(false);
@@ -132,8 +146,8 @@ const isOpen = ref<boolean>(false);
                 variant="ghost"
                 class="justify-start text-base"
               >
-              <RouterLink :to="getUrl(href, header)" 
-              @click="isOpen = false">
+              <RouterLink :to="{...getUrl(href, header), replace: true}" 
+              @click="handleMobileClick(header)"">
                 {{ label }}
               </RouterLink>
               </Button>
@@ -159,7 +173,8 @@ const isOpen = ref<boolean>(false);
               variant="ghost"
               class="justify-start text-base"
             >
-              <RouterLink :to="getUrl(href, header)">
+              <RouterLink :to="{...getUrl(href, header), replace: true}"  
+              @click="handleClick(header)">
                 {{ label }}
               </RouterLink>
             </Button>
