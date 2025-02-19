@@ -24,34 +24,53 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
 import { Menu } from "lucide-vue-next";
+import { RouteLocationAsPathGeneric } from "vue-router";
 
 interface RouteProps {
   href: string;
+  header?:string;
   label: string;
 }
 
 const routeList: RouteProps[] = [
+  {
+    href: "/core-princaples",
+    label: "Core Princaples",
+  },
   { 
-    href: "#games",
+    href: "/",
+    header: "#games",
     label: "Games",
   },
   {
-    href: "#reviews",
+    href: "/",
+    header: "#reviews",
     label: "Reviews",
   },
   {
-    href: "#team",
+    href: "/",
+    header: "#team",
     label: "Team",
   },
   {
-    href: "#contact",
+    href: "/",
+    header: "#contact",
     label: "Contact And Next Event",
   },
   {
-    href: "#faq",
+    href: "/",
+    header: "#faq",
     label: "FAQ",
   },
 ];
+
+function getUrl(href: string, header?: string) {
+  const to: RouteLocationAsPathGeneric = {
+    path: href,
+    hash: header,
+  }
+  return to;
+}
 
 const isOpen = ref<boolean>(false);
 </script>
@@ -107,26 +126,22 @@ const isOpen = ref<boolean>(false);
 
             <div class="flex flex-col gap-2">
               <Button
-                v-for="{ href, label } in routeList"
+                v-for="{ href, header, label } in routeList"
                 :key="label"
                 as-child
                 variant="ghost"
                 class="justify-start text-base"
               >
-                <a
-                  @click="isOpen = false"
-                  :href="href"
-                >
-                  {{ label }}
-                </a>
+              <RouterLink :to="getUrl(href, header)" 
+              @click="isOpen = false">
+                {{ label }}
+              </RouterLink>
               </Button>
             </div>
           </div>
 
           <SheetFooter class="flex-col sm:flex-col justify-start items-start">
             <Separator class="mb-2" />
-
-            <ToggleTheme />
           </SheetFooter>
         </SheetContent>
       </Sheet>
@@ -138,15 +153,15 @@ const isOpen = ref<boolean>(false);
         <NavigationMenuItem>
           <NavigationMenuLink asChild>
             <Button
-              v-for="{ href, label } in routeList"
+              v-for="{ href, header, label } in routeList"
               :key="label"
               as-child
               variant="ghost"
               class="justify-start text-base"
             >
-              <a :href="href">
+              <RouterLink :to="getUrl(href, header)">
                 {{ label }}
-              </a>
+              </RouterLink>
             </Button>
           </NavigationMenuLink>
         </NavigationMenuItem>
