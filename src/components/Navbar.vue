@@ -74,10 +74,16 @@ function getUrl(href: string, header?: string) {
 
 function handleClick(header?: string) {
   if (header) {
-    const targetElement = document.querySelector(`#${header}`);
-    if (targetElement) {
-      targetElement.scrollIntoView({ behavior: 'smooth' });
-    }
+    setTimeout(() => {
+      console.log("Scolling into view with handleClick", header);
+      const targetElement = document.querySelector(`#${header}`);
+      console.log("Maybe Found element", targetElement);
+      if (targetElement) {
+        console.log("Found element", targetElement);
+        targetElement.scrollIntoView({ behavior: 'smooth' });
+        console.log("Done");
+      }
+    }, 200);
   }
 }
 
