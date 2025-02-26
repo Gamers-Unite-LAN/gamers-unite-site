@@ -75,15 +75,15 @@ function getUrl(href: string, header?: string) {
 function handleClick(header?: string) {
   if (header) {
     setTimeout(() => {
-      console.log("Scolling into view with handleClick", header);
       const targetElement = document.querySelector(`#${header}`);
-      console.log("Maybe Found element", targetElement);
       if (targetElement) {
-        console.log("Found element", targetElement);
         targetElement.scrollIntoView({ behavior: 'smooth' });
-        console.log("Done");
       }
-    }, 200);
+    }, 100);
+  } else {
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 100);
   }
 }
 
@@ -152,8 +152,8 @@ const isOpen = ref<boolean>(false);
                 variant="ghost"
                 class="justify-start text-base"
               >
-              <RouterLink :to="{...getUrl(href, header), replace: true}" 
-              @click="handleMobileClick(header)"">
+              <RouterLink :to="getUrl(href, header)" 
+              @click="handleMobileClick(header)">
                 {{ label }}
               </RouterLink>
               </Button>
@@ -179,7 +179,7 @@ const isOpen = ref<boolean>(false);
               variant="ghost"
               class="justify-start text-base"
             >
-              <RouterLink :to="{...getUrl(href, header), replace: true}"  
+              <RouterLink :to="getUrl(href, header)"  
               @click="handleClick(header)">
                 {{ label }}
               </RouterLink>
