@@ -35,7 +35,7 @@
             </p>
           </li>
           <li>
-            <h2 class="text-2xl font-semibold">🛡 Safety & <span class="text-primary">Community</span> - </h2>
+            <h2 class="text-2xl font-semibold">🛡️ Safety & <span class="text-primary">Community</span> - </h2>
             <p class="px-16">
               We strive to be a safe haven for all gamers. Bullying, racism, and discrimination have no
               place in our community. We want everyone to feel welcome, safe, and free from pressure.
