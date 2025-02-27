@@ -24,34 +24,73 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
 import { Menu } from "lucide-vue-next";
+import { RouteLocationAsPathGeneric } from "vue-router";
 
 interface RouteProps {
   href: string;
+  header?:string;
   label: string;
 }
 
 const routeList: RouteProps[] = [
+  {
+    href: "/core-princaples",
+    label: "Core Princaples",
+  },
   { 
-    href: "#games",
+    href: "/",
+    header: "games",
     label: "Games",
   },
   {
-    href: "#reviews",
+    href: "/",
+    header: "reviews",
     label: "Reviews",
   },
   {
-    href: "#team",
+    href: "/",
+    header: "team",
     label: "Team",
   },
   {
-    href: "#contact",
+    href: "/",
+    header: "contact",
     label: "Contact And Next Event",
   },
   {
-    href: "#faq",
+    href: "/",
+    header: "faq",
     label: "FAQ",
   },
 ];
+
+function getUrl(href: string, header?: string) {
+  const to: RouteLocationAsPathGeneric = {
+    path: href,
+    hash: header ? `#${header.replace(/^#/, '')}` : '',
+  }
+  return to;
+}
+
+function handleClick(header?: string) {
+  if (header) {
+    setTimeout(() => {
+      const targetElement = document.querySelector(`#${header}`);
+      if (targetElement) {
+        targetElement.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+  } else {
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 100);
+  }
+}
+
+function handleMobileClick(header?: string) {
+  isOpen.value = false;
+  handleClick(header)
+}
 
 const isOpen = ref<boolean>(false);
 </script>
@@ -107,26 +146,22 @@ const isOpen = ref<boolean>(false);
 
             <div class="flex flex-col gap-2">
               <Button
-                v-for="{ href, label } in routeList"
+                v-for="{ href, header, label } in routeList"
                 :key="label"
                 as-child
                 variant="ghost"
                 class="justify-start text-base"
               >
-                <a
-                  @click="isOpen = false"
-                  :href="href"
-                >
-                  {{ label }}
-                </a>
+              <RouterLink :to="getUrl(href, header)" 
+              @click="handleMobileClick(header)">
+                {{ label }}
+              </RouterLink>
               </Button>
             </div>
           </div>
 
           <SheetFooter class="flex-col sm:flex-col justify-start items-start">
             <Separator class="mb-2" />
-
-            <ToggleTheme />
           </SheetFooter>
         </SheetContent>
       </Sheet>
@@ -138,15 +173,16 @@ const isOpen = ref<boolean>(false);
         <NavigationMenuItem>
           <NavigationMenuLink asChild>
             <Button
-              v-for="{ href, label } in routeList"
+              v-for="{ href, header, label } in routeList"
               :key="label"
               as-child
               variant="ghost"
               class="justify-start text-base"
             >
-              <a :href="href">
+              <RouterLink :to="getUrl(href, header)"  
+              @click="handleClick(header)">
                 {{ label }}
-              </a>
+              </RouterLink>
             </Button>
           </NavigationMenuLink>
         </NavigationMenuItem>

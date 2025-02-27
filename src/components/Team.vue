@@ -36,7 +36,7 @@ const teamList: TeamProps[] = [
     imageUrl: "team/alex.jpg",
     firstName: "Alex",
     lastName: "Wilson",
-    positions: ["After attending the first LAN, Alex joined the team soon after. He helps out with the techinal side of the events."],
+    positions: ["After attending the first LAN, Alex joined the team soon after. He helps out with the technical side of the events."],
     socialNetworks: []
   },
   {
