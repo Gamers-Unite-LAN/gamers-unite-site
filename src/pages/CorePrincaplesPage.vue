@@ -15,31 +15,38 @@
         </p>
         <ul class="max-w-screen-lg mx-auto text-xl text-left text-foreground grid gap-8">
           <li>
-            <h2 class="text-2xl font-semibold">Inclusivity & <span class="text-primary">Respect</span> - </h2>
-            <p class="px-16">We accept all individuals from all walks of life and treat them as we would like to be
-              treated. We don't discrimination based on gender, age, sexuality, race, or mental state. We welcome all
-              skill levels.</p>
+            <h2 class="text-2xl font-semibold">💗 Inclusivity & <span class="text-primary">Respect</span> - </h2>
+            <p class="px-16">
+              We accept all individuals from all walks of life and treat them as we would like to be treated. We don't discriminate based 
+              on gender, age, sexuality, race, or mental state. We welcome all skill levels.
+            </p>
           </li>
           <li>
-            <h2 class="text-2xl font-semibold">Support & <span class="text-primary">Unity</span> - </h2>
-            <p class="px-16">We support our fellow gamers, bringing people together under common interests and helping
-              each other in times of need.</p>
+            <h2 class="text-2xl font-semibold">🤝 Support & <span class="text-primary">Unity</span> - </h2>
+            <p class="px-16">
+              We support our fellow gamers, bringing people together under common interests and helping each other 
+              in times of need. We lift each other up, foster friendships, and create a positive environment where we all thrive together.
+            </p>
           </li>
           <li>
-            <h2 class="text-2xl font-semibold">Knowledge & <span class="text-primary">Growth</span> - </h2>
-            <p class="px-16">We believe in sharing our skills and knowledge to help each other improve, both in gaming
-              and in life.</p>
+            <h2 class="text-2xl font-semibold">📚 Knowledge & <span class="text-primary">Growth</span> - </h2>
+            <p class="px-16">
+              We believe in sharing our skills and knowledge to help each other improve, both in gaming and in life.
+            </p>
           </li>
           <li>
-            <h2 class="text-2xl font-semibold">Safety & <span class="text-primary">Community</span> - </h2>
-            <p class="px-16">We strive to be a safe haven for all gamers. Bullying, racism, and discrimination have no
-              place in our community. We want everyone to feel welcome, safe, and free from pressure.</p>
+            <h2 class="text-2xl font-semibold">🛡 Safety & <span class="text-primary">Community</span> - </h2>
+            <p class="px-16">
+              We strive to be a safe haven for all gamers. Bullying, racism, and discrimination have no
+              place in our community. We want everyone to feel welcome, safe, and free from pressure.
+            </p>
           </li>
           <li>
-            <h2 class="text-2xl font-semibold">Keeping Local <span class="text-primary">Gaming</span> Alive - </h2>
-            <p class="px-16">We cherish the spirit of social interaction and local gaming. With the rise of online
-              gaming and the unintentional isolation it can bring, we are committed to maintaining the tradition of
-              in-person gaming experiences.</p>
+            <h2 class="text-2xl font-semibold">👾 Keeping Local <span class="text-primary">Gaming</span> Alive - </h2>
+            <p class="px-16">
+              We cherish the spirit of social interaction and local gaming. With the rise of online gaming and the unintentional isolation it can bring, 
+              we are committed to maintaining the tradition of in-person gaming experiences.
+            </p>
           </li>
         </ul>
       </div>
