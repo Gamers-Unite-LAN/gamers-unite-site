@@ -1,4 +1,4 @@
-import { createWebHistory, createRouter } from 'vue-router'
+import { createMemoryHistory, createRouter } from 'vue-router'
 
 import LandingPage from './pages/LandingPage.vue'
 import CorePrincaplesPage from './pages/CorePrincaplesPage.vue'
@@ -9,6 +9,6 @@ export const routes = [
   ];
   
 export const router = createRouter({
-    history: createWebHistory(),
+    history: createMemoryHistory(),
     routes
   })
