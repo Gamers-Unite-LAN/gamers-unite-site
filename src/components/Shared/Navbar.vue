@@ -36,6 +36,10 @@ const routeList: RouteProps[] = [
   {
     href: "/core-princaples",
     label: "Core Princaples",
+  },  
+  {
+    href: "/documents",
+    label: "Documents",
   },
   { 
     href: "/",
