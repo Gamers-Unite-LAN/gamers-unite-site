@@ -28,7 +28,7 @@ const FAQList: FAQProps[] = [
     question:
       "Do I need to book a place?",
     answer:
-      "No, it's a free, first-come, first-served event. We are currently limited by seat capacity and hardware avaliabilty. If we're full, you may be turned away.",
+      "No, it's a free, first-come, first-served event. We are currently limited by seat capacity and hardware availability. If we're full, you may be turned away.",
     value: "item-3",
   },
   {

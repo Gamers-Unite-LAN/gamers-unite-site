@@ -29,13 +29,13 @@ const featureList: GamesProps[] = [
     icon: "tmnf",
     title: "Trackmania Nations Forever",
     description:
-      "A high-speed, arcade-style racing game where players compete on gravity-defying tracks. It’s perfect for LAN, allowing players to showcase precision driving skills and compete for the best lap times in fast-paced matches.",
+      "A high-speed, arcade-style racing game where players compete on gravity-defying tracks. It's perfect for LAN, allowing players to showcase precision driving skills and compete for the best lap times in fast-paced matches.",
   },
   {
     icon: "mc",
     title: "Minecraft Hunger Games",
     description:
-      "A survival game mode inspired by the 'Battle Royale' genre, where players scavenge for resources, craft weapons, and battle to be the last person standing. Perfect for LAN parties with its mix of strategy, creativity, and combat.",
+      "A mini-game that inspired the 'Battle Royal' genre, where players scavenge for resources, craft weapons, and battle to be the last person standing. Perfect for LAN parties with its mix of strategy, creativity, and combat.",
   },
   {
     icon: "q3",
