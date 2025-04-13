@@ -35,7 +35,7 @@ const featureList: GamesProps[] = [
     icon: "mc",
     title: "Minecraft Hunger Games",
     description:
-      "A mini-game that inspired the 'Battle Royal' genre, where players scavenge for resources, craft weapons, and battle to be the last person standing. Perfect for LAN parties with its mix of strategy, creativity, and combat.",
+      "A mini-game that inspired the 'Battle Royale' genre, where players scavenge for resources, craft weapons, and battle to be the last person standing. Perfect for LAN parties with its mix of strategy, creativity, and combat.",
   },
   {
     icon: "q3",
