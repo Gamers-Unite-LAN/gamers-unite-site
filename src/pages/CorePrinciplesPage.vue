@@ -15,7 +15,7 @@
         </p>
         <ul class="max-w-screen-lg mx-auto text-xl text-left text-foreground grid gap-8">
           <li>
-            <h2 class="text-2xl font-semibold">💗 Inclusively & <span class="text-primary">Respect</span> - </h2>
+            <h2 class="text-2xl font-semibold">💗 Inclusivity & <span class="text-primary">Respect</span> - </h2>
             <p class="px-16">
               We accept all individuals from all walks of life and treat them as we would like to be treated. We don't discriminate based 
               on gender, age, sexuality, race, or mental state. We welcome all skill levels.
