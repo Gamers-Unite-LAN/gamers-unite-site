@@ -31,7 +31,7 @@ const plans: PlanProps[] = [
     popular: 0,
     price: 0,
     description:
-      "Lorem ipsum dolor sit, amet ipsum consectetur adipisicing elit.",
+      "Lorem ipsum dolor sit",
     buttonText: "Start Free Trial",
     benefitList: [
       "1 team member",
@@ -46,8 +46,8 @@ const plans: PlanProps[] = [
     popular: 1,
     price: 45,
     description:
-      "Lorem ipsum dolor sit, amet ipsum consectetur adipisicing elit.",
-    buttonText: "Get starterd",
+      "Lorem ipsum dolor sit",
+    buttonText: "Get started",
     benefitList: [
       "4 team member",
       "8 GB storage",
@@ -61,7 +61,7 @@ const plans: PlanProps[] = [
     popular: 0,
     price: 120,
     description:
-      "Lorem ipsum dolor sit, amet ipsum consectetur adipisicing elit.",
+      "Lorem ipsum dolor sit",
     buttonText: "Contact US",
     benefitList: [
       "10 team member",
@@ -81,13 +81,13 @@ const plans: PlanProps[] = [
     </h2>
 
     <h2 class="text-3xl md:text-4xl text-center font-bold mb-4">
-      Get unlimitted access
+      Get unlimited access
     </h2>
 
     <h3
       class="md:w-1/2 mx-auto text-xl text-center text-muted-foreground pb-14"
     >
-      Lorem ipsum dolor sit amet consectetur adipisicing reiciendis.
+      Lorem ipsum dolor sit.
     </h3>
 
     <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-4">

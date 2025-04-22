@@ -1,14 +1,14 @@
 import { createMemoryHistory, createRouter } from 'vue-router'
 
 import LandingPage from '@/pages/LandingPage.vue'
-import CorePrincaplesPage from '@/pages/CorePrincaplesPage.vue'
+import CorePrinciplesPage from '@/pages/CorePrinciplesPage.vue'
 import ImportantDocumentsPage from '@/pages/ImportantDocumentsPage.vue';
 import SafeguardingPolicy from '@/components/ImportantDocuments/SafeguardingPolicy.vue';
 import ExpensePolicy from '@/components/ImportantDocuments/ExpensePolicy.vue';
 
 export const routes = [
   { path: '/', component: LandingPage },
-  { path: '/core-princaples', component: CorePrincaplesPage },
+  { path: '/core-principles', component: CorePrinciplesPage },
   {
     path: '/documents', 
     component: ImportantDocumentsPage,

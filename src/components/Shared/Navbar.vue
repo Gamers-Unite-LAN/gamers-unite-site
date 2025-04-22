@@ -34,8 +34,8 @@ interface RouteProps {
 
 const routeList: RouteProps[] = [
   {
-    href: "/core-princaples",
-    label: "Core Princaples",
+    href: "/core-principles",
+    label: "Core Principles",
   },  
   {
     href: "/documents",
@@ -111,7 +111,7 @@ const isOpen = ref<boolean>(false);
       class="font-bold text-lg flex items-center"
     >
       <img
-          class="w-[3rem] mx-auto rounded-lg relative rouded-lg leading-none flex items-center"
+          class="w-[3rem] mx-auto rounded-lg relative leading-none flex items-center"
           :src="'assets/Logo.png'"
           alt="GamersUnite Logo"
         />
@@ -139,7 +139,7 @@ const isOpen = ref<boolean>(false);
                   class="flex items-center"
                 >
                   <img
-                      class="w-[3rem] mx-auto rounded-lg relative rouded-lg leading-none flex items-center"
+                      class="w-[3rem] mx-auto rounded-lg relative leading-none flex items-center"
                       :src="'assets/Logo.png'"
                       alt="GamersUnite Logo"
                     />

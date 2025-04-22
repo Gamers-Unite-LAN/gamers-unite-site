@@ -23,23 +23,23 @@ const serviceList: ServiceProps[] = [
   {
     title: "Custom Domain Integration",
     description:
-      "Lorem ipsum dolor sit, amet consectetur adipisicing elit adipisicing.",
+      "Lorem ipsum dolor sit",
     pro: 0,
   },
   {
     title: "Social Media Integrations",
     description:
-      "Lorem ipsum dolor sit, amet consectetur adipisicing elit. Molestiae, dicta.",
+      "Lorem ipsum dolor sit",
     pro: 0,
   },
   {
     title: "Email Marketing Integrations",
-    description: "Lorem dolor sit amet adipisicing.",
+    description: "Lorem dolor sit",
     pro: 0,
   },
   {
     title: "SEO Optimization",
-    description: "Lorem ipsum dolor sit amet consectetur.",
+    description: "Lorem ipsum dolor sit",
     pro: 1,
   },
 ];

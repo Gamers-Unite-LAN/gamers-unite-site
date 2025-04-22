@@ -6,7 +6,7 @@
           <h1> Important <span class="text-primary">Documents</span></h1>
         </div>
         <p class="max-w-screen-sm mx-auto text-xl text-muted-foreground"> 
-          To make our community thrive, we have some imporant documentation we've written to help us make sure we are all on the same page. 
+          To make our community thrive, we have some important documentation we've written to help us make sure we are all on the same page. 
         </p>
       </div>
 
