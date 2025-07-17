@@ -62,7 +62,7 @@ const handleSubmit = () => {
               <div class="font-bold">Find Us</div>
             </div>
 
-            <p>Des Moffatt Western Community Centre, Somerset Road, Swindon SN2 1NF</p>
+            <p>Highworth Community Centre, The Dormers, Highworth, Swindon SN6 7PQ</p>
           </div>
 
           <div>
@@ -71,7 +71,7 @@ const handleSubmit = () => {
               <div class="font-bold">Google Maps</div>
             </div>
 
-            <a href="https://maps.app.goo.gl/6JwpACUQZC3Fs1rV7">https://maps.app.goo.gl/6JwpACUQZC3Fs1rV7</a>
+            <a href="https://maps.app.goo.gl/HktmN86HHrj3AzGB7">https://maps.app.goo.gl/HktmN86HHrj3AzGB7</a>
           </div>
 
           <div>
@@ -80,7 +80,7 @@ const handleSubmit = () => {
               <div class="font-bold">What 3 Words</div>
             </div>
 
-            <div>///prep.slip.match</div>
+            <div>///hillsides.budgeted.ledge</div>
           </div>
 
           <div>
@@ -90,8 +90,8 @@ const handleSubmit = () => {
             </div>
 
             <div>
-              <div>17th May 2025</div>
-              <div>10AM - 4PM</div>
+              <div>16th Aug 2025</div>
+              <div>10AM - 6PM</div>
             </div>
           </div>
         </div>
