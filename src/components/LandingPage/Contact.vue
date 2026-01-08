@@ -1,41 +1,3 @@
-<script setup lang="ts">
-import { ref, reactive } from "vue";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
-import { AlertCircle, Building2, MapPin, MapPinned, Clock } from "lucide-vue-next";
-
-interface ContactFormeProps {
-  firstName: string;
-  lastName: string;
-  email: string;
-  subject: string;
-  message: string;
-}
-
-const contactForm = reactive<ContactFormeProps>({
-  firstName: "",
-  lastName: "",
-  email: "",
-  subject: "",
-  message: "",
-});
-
-const invalidInputForm = ref<boolean>(false);
-
-const handleSubmit = () => {
-  const { firstName, lastName, email, subject, message } = contactForm;
-
-  const mailToLink = `mailto:gamersunitelanparty@gmail.com?subject=${subject}&body=Hello I am ${firstName} ${lastName}, my Email is ${email}. %0D%0A${message}`;
-
-  window.location.href = mailToLink;
-};
-</script>
-
 <template>
   <section
     id="contact"
@@ -90,7 +52,7 @@ const handleSubmit = () => {
             </div>
 
             <div>
-              <div>16th Aug 2025</div>
+              <div>{{ landingPageData?.date ? formatDate(landingPageData.date, "dd MMMM yyyy") : 'Soon' }}</div>
               <div>10AM - 6PM</div>
             </div>
           </div>
@@ -178,3 +140,46 @@ const handleSubmit = () => {
     </section>
   </section>
 </template>
+
+<script setup lang="ts">
+import { ref, reactive } from "vue";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle, Building2, MapPin, MapPinned, Clock } from "lucide-vue-next";
+import { LandingPageData } from '@/lib/types';
+import { formatDate } from '@vueuse/core';
+
+const { landingPageData } = defineProps<{
+    landingPageData?: LandingPageData;
+}>();
+
+interface ContactFormProps {
+  firstName: string;
+  lastName: string;
+  email: string;
+  subject: string;
+  message: string;
+}
+
+const contactForm = reactive<ContactFormProps>({
+  firstName: "",
+  lastName: "",
+  email: "",
+  subject: "",
+  message: "",
+});
+
+const invalidInputForm = ref<boolean>(false);
+
+const handleSubmit = () => {
+  const { firstName, lastName, email, subject, message } = contactForm;
+
+  const mailToLink = `mailto:gamersunitelanparty@gmail.com?subject=${subject}&body=Hello I am ${firstName} ${lastName}, my Email is ${email}. %0D%0A${message}`;
+
+  window.location.href = mailToLink;
+};
+</script>

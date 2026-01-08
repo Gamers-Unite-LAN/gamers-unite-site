@@ -60,9 +60,9 @@ const featureList: GamesProps[] = [
     </h2>
 
     <h3 class="md:w-1/2 mx-auto text-xl text-center text-muted-foreground mb-8">
-      While we all play a variety of games, when it comes to the events, there's only so much time to play so many games.
-      We always welcome suggestions for new and old games to play and try to play the games that we all will enjoy. 
-      Here are some of the games we currently play at events.
+      We play a variety of games at our events, hand picked and voted on by all of us.
+      While we have our staples, we always love to try new games.
+      Here are some of the games we have played before:
     </h3>
 
     <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
