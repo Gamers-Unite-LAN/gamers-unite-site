@@ -37,10 +37,7 @@ const handleSubmit = () => {
 </script>
 
 <template>
-  <section
-    id="contact"
-    class="container py-24 sm:py-32"
-  >
+  <section id="contact" class="container py-24 sm:py-32">
     <section class="grid grid-cols-1 md:grid-cols-2 gap-8">
       <div>
         <div class="mb-4">
@@ -90,7 +87,7 @@ const handleSubmit = () => {
             </div>
 
             <div>
-              <div>16th Aug 2025</div>
+              <div>21st Feb 2026</div>
               <div>10AM - 6PM</div>
             </div>
           </div>
@@ -101,67 +98,36 @@ const handleSubmit = () => {
       <Card class="bg-muted/60 dark:bg-card">
         <CardHeader class="text-primary text-2xl"> </CardHeader>
         <CardContent>
-          <form
-            @submit.prevent="handleSubmit"
-            class="grid gap-4"
-          >
+          <form @submit.prevent="handleSubmit" class="grid gap-4">
             <div class="flex flex-col md:flex-row gap-8">
               <div class="flex flex-col w-full gap-1.5">
                 <Label for="first-name">First Name</Label>
-                <Input
-                  id="first-name"
-                  type="text"
-                  placeholder="John"
-                  v-model="contactForm.firstName"
-                />
+                <Input id="first-name" type="text" placeholder="John" v-model="contactForm.firstName" />
               </div>
 
               <div class="flex flex-col w-full gap-1.5">
                 <Label for="last-name">Last Name</Label>
-                <Input
-                  id="last-name"
-                  type="text"
-                  placeholder="Doe"
-                  v-model="contactForm.lastName"
-                />
+                <Input id="last-name" type="text" placeholder="Doe" v-model="contactForm.lastName" />
               </div>
             </div>
 
             <div class="flex flex-col gap-1.5">
               <Label for="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="john.doe@gmail.com"
-                v-model="contactForm.email"
-              />
+              <Input id="email" type="email" placeholder="john.doe@gmail.com" v-model="contactForm.email" />
             </div>
 
             <div class="flex flex-col gap-1.5">
               <Label for="subject">Subject</Label>
 
-              <Input
-                id="subject"
-                type="text"
-                placeholder="Subject"
-                v-model="contactForm.subject"
-              />
+              <Input id="subject" type="text" placeholder="Subject" v-model="contactForm.subject" />
             </div>
 
             <div class="flex flex-col gap-1.5">
               <Label for="message">Message</Label>
-              <Textarea
-                id="message"
-                placeholder="Your message..."
-                rows="5"
-                v-model="contactForm.message"
-              />
+              <Textarea id="message" placeholder="Your message..." rows="5" v-model="contactForm.message" />
             </div>
 
-            <Alert
-              v-if="invalidInputForm"
-              variant="destructive"
-            >
+            <Alert v-if="invalidInputForm" variant="destructive">
               <AlertCircle class="w-4 h-4" />
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>
