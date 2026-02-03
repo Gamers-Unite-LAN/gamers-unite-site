@@ -21,7 +21,7 @@ export default defineConfig({
   ssgOptions: {
     onFinished() {
       generateSitemap({
-        hostname: 'https://gamersunitelan.com',
+        hostname: "https://gamersunitelan.com",
       });
     },
   },
