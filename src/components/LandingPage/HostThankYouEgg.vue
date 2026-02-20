@@ -65,7 +65,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { onKeyStroke, onClickOutside } from '@vueuse/core';
+import { onKeyStroke } from '@vueuse/core';
 
 const isVisible = ref(false);
 const showCombo = ref(false);
