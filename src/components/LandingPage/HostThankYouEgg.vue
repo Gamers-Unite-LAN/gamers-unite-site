@@ -18,7 +18,7 @@
         enter-to-class="opacity-100" leave-active-class="transition-all duration-200 ease-in"
         leave-from-class="opacity-100" leave-to-class="opacity-0">
         <div v-if="isVisible" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75"
-            @click="closeModal">
+            @click="closeModal" v-click-outside="closeModal">
             <Transition enter-active-class="transition-all duration-300 ease-out"
                 enter-from-class="opacity-0 scale-75 translate-y-4" enter-to-class="opacity-100 scale-100 translate-y-0"
                 leave-active-class="transition-all duration-200 ease-in"
@@ -65,7 +65,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { onKeyStroke } from '@vueuse/core';
+import { onKeyStroke, onClickOutside } from '@vueuse/core';
 
 const isVisible = ref(false);
 const showCombo = ref(false);
