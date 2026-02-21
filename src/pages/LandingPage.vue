@@ -7,6 +7,7 @@
   <Community />
   <Contact />
   <FAQ />
+  <HostThankYouEgg />
 </template>
 
 <script setup lang="ts">
@@ -18,4 +19,5 @@ import Team from "../components/LandingPage/Team.vue";
 import Community from "../components/LandingPage/Community.vue";
 import Contact from "../components/LandingPage/Contact.vue";
 import FAQ from "../components/LandingPage/FAQ.vue";
+import HostThankYouEgg from "@/components/LandingPage/HostThankYouEgg.vue";
 </script>
