@@ -87,7 +87,7 @@ const handleSubmit = () => {
             </div>
 
             <div>
-              <div>21st Feb 2026</div>
+              <div>23rd May 2026</div>
               <div>10AM - 6PM</div>
             </div>
           </div>
