@@ -5,9 +5,9 @@
 
                 <div class="max-w-screen-md mx-auto text-center text-5xl md:text-6xl font-bold">
                     <h1>
-                        Redirecting to the {{ props.gameName }}
+                        Redirecting to the
                         <span class="text-transparent bg-gradient-to-r from-[#972c89] to-primary bg-clip-text">
-                            {{ !props.isCommunity ? 'official' : 'community' }} server
+                            {{ props.serverDescription }}
                         </span>
                     </h1>
                 </div>
