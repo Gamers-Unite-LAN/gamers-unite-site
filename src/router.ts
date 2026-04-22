@@ -21,8 +21,10 @@ export const routes: RouteRecordRaw[] = [
   {
     path: "/servers/community/rust",
     beforeEnter() {
-      location.href =
-        "steam://run/252490//+connect%20community.rust.gamersunitelan.com/";
+      window.open(
+        "steam://run/252490//+connect%20community.rust.gamersunitelan.com/",
+        "_blank",
+      );
     },
     component: externalRedirect,
   },
