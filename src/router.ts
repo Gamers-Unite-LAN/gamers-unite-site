@@ -6,6 +6,7 @@ import ImportantDocumentsPage from "@/pages/ImportantDocumentsPage.vue";
 import SafeguardingPolicy from "@/components/ImportantDocuments/SafeguardingPolicy.vue";
 import ExpensePolicy from "@/components/ImportantDocuments/ExpensePolicy.vue";
 
+const externalRedirect = { template: "<div>External Redirect</div>" };
 export const routes: RouteRecordRaw[] = [
   { path: "/", component: LandingPage },
   { path: "/core-principles", component: CorePrinciplesPage },
@@ -19,8 +20,11 @@ export const routes: RouteRecordRaw[] = [
   },
   {
     path: "/servers/community/rust",
-    redirect:
-      "steam://run/252490//+connect%20community.rust.gamersunitelan.com/",
+    beforeEnter() {
+      location.href =
+        "steam://run/252490//+connect%20community.rust.gamersunitelan.com/";
+    },
+    component: externalRedirect,
   },
 ];
 
