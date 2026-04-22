@@ -5,8 +5,8 @@ import CorePrinciplesPage from "@/pages/CorePrinciplesPage.vue";
 import ImportantDocumentsPage from "@/pages/ImportantDocumentsPage.vue";
 import SafeguardingPolicy from "@/components/ImportantDocuments/SafeguardingPolicy.vue";
 import ExpensePolicy from "@/components/ImportantDocuments/ExpensePolicy.vue";
+import ExternalRedirect from "./components/ExternalRedirect.vue";
 
-const externalRedirect = { template: "<div>External Redirect</div>" };
 export const routes: RouteRecordRaw[] = [
   { path: "/", component: LandingPage },
   { path: "/core-principles", component: CorePrinciplesPage },
@@ -20,13 +20,13 @@ export const routes: RouteRecordRaw[] = [
   },
   {
     path: "/servers/community/rust",
-    beforeEnter() {
-      window.open(
-        "steam://run/252490//+connect%20community.rust.gamersunitelan.com/",
-        "_blank",
-      );
+    component: ExternalRedirect,
+    props: {
+      url: "steam://run/252490//+connect%20community.rust.gamersunitelan.com/",
+      serverDescription: "Rust community server",
+      gameName: "Rust",
+      isCommunity: true,
     },
-    component: externalRedirect,
   },
 ];
 
