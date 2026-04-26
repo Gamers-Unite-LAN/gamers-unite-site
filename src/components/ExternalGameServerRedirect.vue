@@ -5,21 +5,21 @@
 
                 <div class="max-w-screen-md mx-auto text-center text-5xl md:text-6xl font-bold">
                     <h1>
-                        Redirecting to
+                        Redirecting to the
                         <span class="text-transparent bg-gradient-to-r from-[#972c89] to-primary bg-clip-text">
-                            {{ props.url }}
+                            {{ props.serverDescription }}
                         </span>
                     </h1>
                 </div>
 
                 <p class="max-w-screen-sm mx-auto text-xl text-muted-foreground">
-                    Please make sure you trust the destination before proceeding. Click bellow if you want to continue
-                    to the external site.
+                    Your browser may ask you to confirm the redirect. If you are not redirected, please click the link
+                    below:
                 </p>
 
                 <div class="text-center">
                     <a :href="props.url" class="text-primary text-lg font-medium hover:underline">
-                        Redirect to {{ props.url }}
+                        Connect to the {{ props.serverDescription }}
                     </a>
                 </div>
             </div>
@@ -28,9 +28,16 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from "vue";
+
 const props = defineProps<{
     url: string,
+    serverDescription: string,
+    gameName: string,
+    isCommunity: boolean
 }>();
 
-
+onMounted(() => {
+    window.location.href = props.url;
+});
 </script>

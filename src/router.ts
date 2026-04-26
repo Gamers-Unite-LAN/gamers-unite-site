@@ -5,7 +5,7 @@ import CorePrinciplesPage from "@/pages/CorePrinciplesPage.vue";
 import ImportantDocumentsPage from "@/pages/ImportantDocumentsPage.vue";
 import SafeguardingPolicy from "@/components/ImportantDocuments/SafeguardingPolicy.vue";
 import ExpensePolicy from "@/components/ImportantDocuments/ExpensePolicy.vue";
-import ExternalRedirect from "./components/ExternalRedirect.vue";
+import { externalRoutes } from "./externalRedirects";
 
 export const routes: RouteRecordRaw[] = [
   { path: "/", component: LandingPage },
@@ -18,16 +18,7 @@ export const routes: RouteRecordRaw[] = [
       { path: "safeguarding-policy", component: SafeguardingPolicy },
     ],
   },
-  {
-    path: "/servers/community/rust",
-    component: ExternalRedirect,
-    props: {
-      url: "steam://run/252490//+connect%20community.rust.gamersunitelan.com/",
-      serverDescription: "Rust community server",
-      gameName: "Rust",
-      isCommunity: true,
-    },
-  },
+  ...externalRoutes,
 ];
 
 export const router = createRouter({
