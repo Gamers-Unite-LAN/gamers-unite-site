@@ -1,53 +1,47 @@
-<script setup lang="ts">
-</script>
-
 <template>
   <section class="container">
-    <div
-      class="grid place-items-center lg:max-w-screen-xl gap-8 mx-auto py-20 md:py-32"
-    >
+    <div class="grid place-items-center lg:max-w-screen-xl gap-8 mx-auto py-20 md:py-32">
       <div class="text-center space-y-8">
-        
-        <div
-          class="max-w-screen-md mx-auto text-center text-5xl md:text-6xl font-bold"
-        >
+
+        <div class="max-w-screen-md mx-auto text-center text-5xl md:text-6xl font-bold">
           <h1>
             Join your local community at
-            <span
-              class="text-transparent bg-gradient-to-r from-[#972c89] to-primary bg-clip-text"
-              >Gamers Unite
+            <span class="text-transparent bg-gradient-to-r from-[#972c89] to-primary bg-clip-text">Gamers Unite
             </span>
             LAN events
           </h1>
         </div>
 
         <p class="max-w-screen-sm mx-auto text-xl text-muted-foreground">
-          Meet with people who share your passion and connect with new 
-          friends. Join us for exciting LAN events and make lasting 
+          Meet with people who share your passion and connect with new
+          friends. Join us for exciting LAN events and make lasting
           connections.
         </p>
       </div>
 
       <div class="relative group mt-14">
         <!-- gradient shadow -->
-        <div
-          class="absolute -top-6 right-12 w-[90%] h-12 lg:h-[80%] glowing-shadow blur-3xl rounded-full"
-        ></div>
+        <div class="absolute -top-6 right-12 w-[90%] h-12 lg:h-[80%] glowing-shadow blur-3xl rounded-full"></div>
 
-        <img
-          class="w-full md:w-[1200px] mx-auto rounded-lg relative rouded-lg leading-none flex items-center glowing-border"
-          :src="'event-images/in-event-2.jpg'"
-          alt="people playing games at a LAN event"
-        />
+        <DesktopCarousel v-if="isDesktop"
+          class="w-full md:w-[1200px] mx-auto rounded-lg relative rouded-lg leading-none flex items-center glowing-border" />
+        <MobileCarousel v-else
+          class="w-full md:w-[1200px] mx-auto rounded-lg relative rouded-lg leading-none flex items-center glowing-border" />
 
         <!-- gradient effect img -->
         <div
-          class="absolute bottom-0 left-0 w-full h-20 md:h-28 bg-gradient-to-b from-background/0 via-background/50 to-background rounded-lg"
-        ></div>
+          class="absolute bottom-0 left-0 w-full h-20 md:h-28 bg-gradient-to-b from-background/0 via-background/50 to-background rounded-lg">
+        </div>
       </div>
     </div>
   </section>
 </template>
+<script setup lang="ts">
+import DesktopCarousel from './DesktopCarousel.vue';
+import MobileCarousel from './MobileCarousel.vue';
+
+const isDesktop = window.innerWidth >= 1024;
+</script>
 
 <style scoped>
 .img-shadow-animation {
@@ -92,6 +86,7 @@
     border-top-color: rgba(var(--primary-rgb), 0.6);
   }
 }
+
 .glowing-border {
   border-top-width: 4px;
   animation: img-border-animation 2s infinite alternate;
