@@ -24,7 +24,7 @@ import { Carousel, Slide, Pagination, Navigation } from 'vue3-carousel'
 const carouselConfig = {
     itemsToShow: 1,
     wrapAround: true,
-    autoplay: 0,
+    autoplay: 3000,
     transition: 600
 }
 
