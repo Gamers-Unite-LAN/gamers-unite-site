@@ -10,11 +10,74 @@ function handleSubmit() {
 </script>
 
 <template>
-  <section id="contact" class="relative overflow-hidden bg-primary py-24 sm:py-32"><div class="absolute inset-0 bg-dot-pattern bg-dots opacity-40"></div>
-    <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"><div class="rounded-[2rem] border border-primary/30 bg-background p-7 shadow-2xl sm:p-12 lg:p-16"><div class="grid gap-12 lg:grid-cols-2"><div><p class="text-xs font-bold uppercase tracking-[.2em] text-primary">Next LAN</p><h2 class="mt-4 text-4xl font-extrabold tracking-tight sm:text-5xl">Join us at next <span class="text-primary">meetup</span>.</h2><p class="mt-6 text-lg leading-8 text-muted-foreground">Bring your system, meet fellow gamers, and settle in for a full day of games and good company.</p>
-        <dl class="mt-10 space-y-6"><div class="flex gap-4"><div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Calendar /></div><div><dt class="font-bold">8th Aug 2026</dt><dd class="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">10AM – 6PM</dd></div></div><div class="flex gap-4"><div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin /></div><div><dt class="font-bold">Highworth Community Centre</dt><dd class="mt-1 text-sm text-muted-foreground">The Dormers, Highworth, Swindon SN6 7PQ</dd></div></div><div class="flex gap-4"><div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Clock /></div><a href="https://maps.app.goo.gl/HktmN86HHrj3AzGB7" target="_blank" rel="noreferrer" class="font-bold hover:text-primary">Open in Google Maps</a></div></dl>
+  <section id="contact" class="relative overflow-hidden bg-primary py-24 sm:py-32">
+    <div class="absolute inset-0 bg-dot-pattern bg-dots opacity-40"></div>
+    <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="rounded-[2rem] border border-primary/30 bg-background p-7 shadow-2xl sm:p-12 lg:p-16">
+        <div class="grid gap-12 lg:grid-cols-2">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[.2em] text-primary">Next LAN</p>
+            <h2 class="mt-4 text-4xl font-extrabold tracking-tight sm:text-5xl">Join us at next <span
+                class="text-primary">meetup</span>.</h2>
+            <p class="mt-6 text-lg leading-8 text-muted-foreground">Bring your system, meet fellow gamers, and settle in
+              for a full day of games and good company.</p>
+            <dl class="mt-10 space-y-6">
+              <div class="flex gap-4">
+                <div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Calendar />
+                </div>
+                <div>
+                  <dt class="font-bold">8th Aug 2026</dt>
+                  <dd class="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">10AM – 6PM</dd>
+                </div>
+              </div>
+              <div class="flex gap-4">
+                <div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <MapPin />
+                </div>
+                <div>
+                  <dt class="font-bold">Highworth Community Centre</dt>
+                  <dd class="mt-1 text-sm text-muted-foreground">The Dormers, Highworth, Swindon SN6 7PQ</dd>
+                </div>
+              </div>
+              <div class="flex gap-4">
+                <div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Clock />
+                </div>
+                <div>
+
+                  <a href="https://maps.app.goo.gl/HktmN86HHrj3AzGB7" target="_blank" rel="noreferrer"
+                    class="font-bold hover:text-primary">Open in Google Maps</a>
+                  <dd class="mt-1 text-sm text-muted-foreground">///hillsides.budgeted.ledge</dd>
+                </div>
+              </div>
+            </dl>
+          </div>
+          <form class="rounded-3xl border border-border bg-card p-6 sm:p-8" @submit.prevent="handleSubmit">
+            <h3 class="text-2xl font-bold">Send a message</h3>
+            <p class="mt-2 text-sm text-muted-foreground">Questions about next event? We can help.</p>
+            <div class="mt-7 grid gap-4 sm:grid-cols-2"><label class="grid gap-2 text-sm font-semibold">First name<input
+                  v-model="contactForm.firstName" required
+                  class="rounded-lg border border-border bg-background px-3 py-3 font-normal outline-none ring-primary focus:ring-2" /></label><label
+                class="grid gap-2 text-sm font-semibold">Last name<input v-model="contactForm.lastName" required
+                  class="rounded-lg border border-border bg-background px-3 py-3 font-normal outline-none ring-primary focus:ring-2" /></label><label
+                class="grid gap-2 text-sm font-semibold sm:col-span-2">Email<input v-model="contactForm.email" required
+                  type="email"
+                  class="rounded-lg border border-border bg-background px-3 py-3 font-normal outline-none ring-primary focus:ring-2" /></label><label
+                class="grid gap-2 text-sm font-semibold sm:col-span-2">Subject<input v-model="contactForm.subject"
+                  required
+                  class="rounded-lg border border-border bg-background px-3 py-3 font-normal outline-none ring-primary focus:ring-2" /></label><label
+                class="grid gap-2 text-sm font-semibold sm:col-span-2">Message<textarea v-model="contactForm.message"
+                  required rows="4"
+                  class="rounded-lg border border-border bg-background px-3 py-3 font-normal outline-none ring-primary focus:ring-2"></textarea></label>
+            </div><button
+              class="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-4 font-bold text-foreground transition hover:bg-secondary">Send
+              message
+              <ChevronRight class="size-5" />
+            </button>
+          </form>
+        </div>
       </div>
-      <form class="rounded-3xl border border-border bg-card p-6 sm:p-8" @submit.prevent="handleSubmit"><h3 class="text-2xl font-bold">Send a message</h3><p class="mt-2 text-sm text-muted-foreground">Questions about next event? We can help.</p><div class="mt-7 grid gap-4 sm:grid-cols-2"><label class="grid gap-2 text-sm font-semibold">First name<input v-model="contactForm.firstName" required class="rounded-lg border border-border bg-background px-3 py-3 font-normal outline-none ring-primary focus:ring-2" /></label><label class="grid gap-2 text-sm font-semibold">Last name<input v-model="contactForm.lastName" required class="rounded-lg border border-border bg-background px-3 py-3 font-normal outline-none ring-primary focus:ring-2" /></label><label class="grid gap-2 text-sm font-semibold sm:col-span-2">Email<input v-model="contactForm.email" required type="email" class="rounded-lg border border-border bg-background px-3 py-3 font-normal outline-none ring-primary focus:ring-2" /></label><label class="grid gap-2 text-sm font-semibold sm:col-span-2">Subject<input v-model="contactForm.subject" required class="rounded-lg border border-border bg-background px-3 py-3 font-normal outline-none ring-primary focus:ring-2" /></label><label class="grid gap-2 text-sm font-semibold sm:col-span-2">Message<textarea v-model="contactForm.message" required rows="4" class="rounded-lg border border-border bg-background px-3 py-3 font-normal outline-none ring-primary focus:ring-2"></textarea></label></div><button class="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-4 font-bold text-foreground transition hover:bg-secondary">Send message <ChevronRight class="size-5" /></button></form>
-      </div></div></div>
+    </div>
   </section>
 </template>
