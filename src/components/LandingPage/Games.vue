@@ -1,8 +1,8 @@
 <script setup lang="ts">
 const games = [
-  { icon: "tf2", title: "Modern", description: "Games that are popular and widely played in the community, from the latest releases to the current favorites." },
-  { icon: "cs2", title: "Classic", description: "Timeless games that have stood the test of time and continue to be enjoyed by the community." },
-  { icon: "halo", title: "Wild card", description: "Games that you think are great for a LAN but are bit on the unconventional side." }
+  { icon: "modern", title: "Modern", description: "Games that are popular and widely played in the community, from the latest releases to the current favorites." },
+  { icon: "classic", title: "Classic", description: "Timeless games that have stood the test of time and continue to be enjoyed by the community." },
+  { icon: "wildcard", title: "Wildcard", description: "Games that you think are great for a LAN but are bit on the unconventional side." }
 ];
 </script>
 
@@ -20,7 +20,7 @@ const games = [
         <article v-for="game in games" :key="game.title"
           class="group rounded-3xl border border-border bg-card p-6 transition hover:-translate-y-1 hover:border-primary/60">
           <div class="flex aspect-[16/8] items-center justify-center rounded-2xl bg-background"><img
-              :src="`/game-logos/${game.icon}.png`" :alt="`${game.title} logo`"
+              :src="`/game-poll-categories/${game.icon}.png`" :alt="`${game.title} logo`"
               class="max-h-24 max-w-[70%] object-contain transition duration-500 group-hover:scale-110" /></div>
           <h3 class="mt-6 text-xl font-bold text-foreground">{{ game.title }}</h3>
           <p class="mt-2 text-sm leading-6 text-muted-foreground">{{ game.description }}</p>
