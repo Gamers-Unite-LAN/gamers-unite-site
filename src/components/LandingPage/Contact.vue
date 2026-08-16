@@ -1,146 +1,20 @@
 <script setup lang="ts">
-import { ref, reactive } from "vue";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { reactive } from "vue";
+import { Calendar, MapPin, Clock, ChevronRight } from "lucide-vue-next";
 
-import { AlertCircle, Building2, MapPin, MapPinned, Clock } from "lucide-vue-next";
-
-interface ContactFormeProps {
-  firstName: string;
-  lastName: string;
-  email: string;
-  subject: string;
-  message: string;
-}
-
-const contactForm = reactive<ContactFormeProps>({
-  firstName: "",
-  lastName: "",
-  email: "",
-  subject: "",
-  message: "",
-});
-
-const invalidInputForm = ref<boolean>(false);
-
-const handleSubmit = () => {
+const contactForm = reactive({ firstName: "", lastName: "", email: "", subject: "", message: "" });
+function handleSubmit() {
   const { firstName, lastName, email, subject, message } = contactForm;
-
-  const mailToLink = `mailto:gamersunitelanparty@gmail.com?subject=${subject}&body=Hello I am ${firstName} ${lastName}, my Email is ${email}. %0D%0A${message}`;
-
-  window.location.href = mailToLink;
-};
+  window.location.href = `mailto:gamersunitelanparty@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(`Hello I am ${firstName} ${lastName}, my Email is ${email}.\n${message}`)}`;
+}
 </script>
 
 <template>
-  <section id="contact" class="container py-24 sm:py-32">
-    <section class="grid grid-cols-1 md:grid-cols-2 gap-8">
-      <div>
-        <div class="mb-4">
-          <h2 class="text-lg text-primary mb-2 tracking-wider">Contact</h2>
-
-          <h2 class="text-3xl md:text-4xl font-bold">Connect With Us</h2>
-        </div>
-        <p class="mb-8 text-muted-foreground lg:w-5/6">
-          Have a question or need assistance? Our team is here to help. Reach out to us through the contact form or
-          connect with us on discord.
-        </p>
-
-        <h2 class="text-3xl md:text-4xl font-bold mb-4">Next Lan</h2>
-
-        <div class="flex flex-col gap-4">
-          <div>
-            <div class="flex gap-2 mb-1">
-              <Building2 />
-              <div class="font-bold">Find Us</div>
-            </div>
-
-            <p>Highworth Community Centre, The Dormers, Highworth, Swindon SN6 7PQ</p>
-          </div>
-
-          <div>
-            <div class="flex gap-2 mb-1">
-              <MapPin />
-              <div class="font-bold">Google Maps</div>
-            </div>
-
-            <a href="https://maps.app.goo.gl/HktmN86HHrj3AzGB7">https://maps.app.goo.gl/HktmN86HHrj3AzGB7</a>
-          </div>
-
-          <div>
-            <div class="flex gap-2 mb-1">
-              <MapPinned />
-              <div class="font-bold">What 3 Words</div>
-            </div>
-
-            <div>///hillsides.budgeted.ledge</div>
-          </div>
-
-          <div>
-            <div class="flex gap-2">
-              <Clock />
-              <div class="font-bold">Date/Time</div>
-            </div>
-
-            <div>
-              <div>8th Aug 2026</div>
-              <div>10AM - 6PM</div>
-            </div>
-          </div>
-        </div>
+  <section id="contact" class="relative overflow-hidden bg-primary py-24 sm:py-32"><div class="absolute inset-0 bg-dot-pattern bg-dots opacity-40"></div>
+    <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"><div class="rounded-[2rem] border border-primary/30 bg-background p-7 shadow-2xl sm:p-12 lg:p-16"><div class="grid gap-12 lg:grid-cols-2"><div><p class="text-xs font-bold uppercase tracking-[.2em] text-primary">Next LAN</p><h2 class="mt-4 text-4xl font-extrabold tracking-tight sm:text-5xl">Join us at next <span class="text-primary">meetup</span>.</h2><p class="mt-6 text-lg leading-8 text-muted-foreground">Bring your system, meet fellow gamers, and settle in for a full day of games and good company.</p>
+        <dl class="mt-10 space-y-6"><div class="flex gap-4"><div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Calendar /></div><div><dt class="font-bold">8th Aug 2026</dt><dd class="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">10AM – 6PM</dd></div></div><div class="flex gap-4"><div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin /></div><div><dt class="font-bold">Highworth Community Centre</dt><dd class="mt-1 text-sm text-muted-foreground">The Dormers, Highworth, Swindon SN6 7PQ</dd></div></div><div class="flex gap-4"><div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Clock /></div><a href="https://maps.app.goo.gl/HktmN86HHrj3AzGB7" target="_blank" rel="noreferrer" class="font-bold hover:text-primary">Open in Google Maps</a></div></dl>
       </div>
-
-      <!-- form -->
-      <Card class="bg-muted/60 dark:bg-card">
-        <CardHeader class="text-primary text-2xl"> </CardHeader>
-        <CardContent>
-          <form @submit.prevent="handleSubmit" class="grid gap-4">
-            <div class="flex flex-col md:flex-row gap-8">
-              <div class="flex flex-col w-full gap-1.5">
-                <Label for="first-name">First Name</Label>
-                <Input id="first-name" type="text" placeholder="John" v-model="contactForm.firstName" />
-              </div>
-
-              <div class="flex flex-col w-full gap-1.5">
-                <Label for="last-name">Last Name</Label>
-                <Input id="last-name" type="text" placeholder="Doe" v-model="contactForm.lastName" />
-              </div>
-            </div>
-
-            <div class="flex flex-col gap-1.5">
-              <Label for="email">Email</Label>
-              <Input id="email" type="email" placeholder="john.doe@gmail.com" v-model="contactForm.email" />
-            </div>
-
-            <div class="flex flex-col gap-1.5">
-              <Label for="subject">Subject</Label>
-
-              <Input id="subject" type="text" placeholder="Subject" v-model="contactForm.subject" />
-            </div>
-
-            <div class="flex flex-col gap-1.5">
-              <Label for="message">Message</Label>
-              <Textarea id="message" placeholder="Your message..." rows="5" v-model="contactForm.message" />
-            </div>
-
-            <Alert v-if="invalidInputForm" variant="destructive">
-              <AlertCircle class="w-4 h-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>
-                There is an error in the form. Please check your input.
-              </AlertDescription>
-            </Alert>
-
-            <Button class="mt-4">Send message</Button>
-          </form>
-        </CardContent>
-
-        <CardFooter></CardFooter>
-      </Card>
-    </section>
+      <form class="rounded-3xl border border-border bg-card p-6 sm:p-8" @submit.prevent="handleSubmit"><h3 class="text-2xl font-bold">Send a message</h3><p class="mt-2 text-sm text-muted-foreground">Questions about next event? We can help.</p><div class="mt-7 grid gap-4 sm:grid-cols-2"><label class="grid gap-2 text-sm font-semibold">First name<input v-model="contactForm.firstName" required class="rounded-lg border border-border bg-background px-3 py-3 font-normal outline-none ring-primary focus:ring-2" /></label><label class="grid gap-2 text-sm font-semibold">Last name<input v-model="contactForm.lastName" required class="rounded-lg border border-border bg-background px-3 py-3 font-normal outline-none ring-primary focus:ring-2" /></label><label class="grid gap-2 text-sm font-semibold sm:col-span-2">Email<input v-model="contactForm.email" required type="email" class="rounded-lg border border-border bg-background px-3 py-3 font-normal outline-none ring-primary focus:ring-2" /></label><label class="grid gap-2 text-sm font-semibold sm:col-span-2">Subject<input v-model="contactForm.subject" required class="rounded-lg border border-border bg-background px-3 py-3 font-normal outline-none ring-primary focus:ring-2" /></label><label class="grid gap-2 text-sm font-semibold sm:col-span-2">Message<textarea v-model="contactForm.message" required rows="4" class="rounded-lg border border-border bg-background px-3 py-3 font-normal outline-none ring-primary focus:ring-2"></textarea></label></div><button class="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-4 font-bold text-foreground transition hover:bg-secondary">Send message <ChevronRight class="size-5" /></button></form>
+      </div></div></div>
   </section>
 </template>

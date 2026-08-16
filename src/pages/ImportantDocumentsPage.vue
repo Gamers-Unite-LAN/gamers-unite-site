@@ -10,11 +10,9 @@
         </p>
       </div>
 
-      <div class="document-tabs">
-        <div class="flex flex-wrap justify-center gap-4">
-          <router-link to="/documents/expense-policy" active-class="selected-tab" class="tab">Expense Policy</router-link>
-          <router-link to="/documents/safeguarding-policy" active-class="selected-tab" class="tab">Safeguarding Policy</router-link>
-        </div>
+      <div class="flex flex-wrap justify-center border-b border-gray-700 text-center text-sm font-medium text-gray-400">
+        <router-link to="/documents/expense-policy" active-class="bg-gray-900 text-primary" class="inline-block rounded-t-lg p-4 hover:bg-gray-800 hover:text-gray-300">Expense Policy</router-link>
+        <router-link to="/documents/safeguarding-policy" active-class="bg-gray-900 text-primary" class="inline-block rounded-t-lg p-4 hover:bg-gray-800 hover:text-gray-300">Safeguarding Policy</router-link>
       </div>
 
       <router-view v-slot="{ Component }">
@@ -25,20 +23,3 @@
     </div>
   </section>
 </template>
-
-<style scoped>
-.document-tabs {
-  @apply flex flex-wrap text-sm font-medium text-center border-b border-gray-700 text-gray-400;
-}
-
-
-.tab {
-  @apply 
-    inline-block p-4 rounded-t-lg hover:bg-gray-800 hover:text-gray-300;
-}
-
-.selected-tab {
-  @apply 
-    inline-block p-4 text-primary bg-gray-900 rounded-t-lg;
-}
-</style>
