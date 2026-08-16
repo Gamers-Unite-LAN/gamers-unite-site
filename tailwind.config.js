@@ -3,91 +3,32 @@ const animate = require("tailwindcss-animate");
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
-  safelist: ["dark"],
-  prefix: "",
-
-  content: [
-    "./pages/**/*.{ts,tsx,vue}",
-    "./components/**/*.{ts,tsx,vue}",
-    "./app/**/*.{ts,tsx,vue}",
-    "./src/**/*.{ts,tsx,vue}",
-  ],
-
+  content: ["./pages/**/*.{ts,tsx,vue}", "./components/**/*.{ts,tsx,vue}", "./app/**/*.{ts,tsx,vue}", "./src/**/*.{ts,tsx,vue}"],
   theme: {
-    container: {
-      center: true,
-      padding: "1.5rem",
-      screens: {
-        "2xl": "1400px",
-      },
-    },
+    container: { center: true, padding: "1.5rem", screens: { "2xl": "1400px" } },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        primaryRgb: "var(--primary-rgb)",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
+        border: "#292524", input: "#292524", ring: "#BF0D54", background: "#0C0A09", foreground: "#FAFAF9",
+        primary: { DEFAULT: "#BF0D54", foreground: "#FAFAF9" },
+        secondary: { DEFAULT: "#D247BF", foreground: "#FAFAF9" },
+        muted: { DEFAULT: "#292524", foreground: "#A8A29E" },
+        accent: { DEFAULT: "#972C89", foreground: "#FAFAF9" },
+        popover: { DEFAULT: "#161412", foreground: "#FAFAF9" },
+        card: { DEFAULT: "#161412", foreground: "#FAFAF9" },
       },
-      borderRadius: {
-        xl: "calc(var(--radius) + 4px)",
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+      backgroundImage: {
+        "brand-gradient": "linear-gradient(90deg, #D247BF, #BF0D54)",
+        "dot-pattern": "radial-gradient(rgba(191, 13, 84, 0.12) 1px, transparent 1px)",
       },
+      backgroundSize: { dots: "32px 32px" },
+      boxShadow: { brand: "0 4px 14px rgba(191, 13, 84, 0.3)", glow: "0 0 48px rgba(191, 13, 84, 0.2)" },
       keyframes: {
-        "accordion-down": {
-          from: { height: 0 },
-          to: { height: "var(--radix-accordion-content-height)" },
-        },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: 0 },
-        },
-        "collapsible-down": {
-          from: { height: 0 },
-          to: { height: "var(--radix-collapsible-content-height)" },
-        },
-        "collapsible-up": {
-          from: { height: "var(--radix-collapsible-content-height)" },
-          to: { height: 0 },
-        },
+        float: { "0%, 100%": { transform: "translate3d(0, 0, 0)" }, "50%": { transform: "translate3d(0, -12px, 0)" } },
+        "accordion-down": { from: { height: 0 }, to: { height: "var(--radix-accordion-content-height)" } },
+        "accordion-up": { from: { height: "var(--radix-accordion-content-height)" }, to: { height: 0 } },
+        "combo-glow": { "0%, 100%": { boxShadow: "0 0 20px rgba(251,191,36,.5),0 0 40px rgba(251,191,36,.2)" }, "50%": { boxShadow: "0 0 30px rgba(251,191,36,.8),0 0 60px rgba(251,191,36,.4)" } },
       },
-      animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-        "collapsible-down": "collapsible-down 0.2s ease-in-out",
-        "collapsible-up": "collapsible-up 0.2s ease-in-out",
-      },
+      animation: { float: "float 8s cubic-bezier(.45, 0, .55, 1) infinite", "accordion-down": "accordion-down .2s ease-out", "accordion-up": "accordion-up .2s ease-out", "combo-glow": "combo-glow .8s ease-out" },
     },
   },
   plugins: [animate],

@@ -1,206 +1,42 @@
-<script lang="ts" setup>
+<script setup lang="ts">
 import { ref } from "vue";
+import { Menu, X } from "lucide-vue-next";
 
-import { useColorMode } from "@vueuse/core";
-const mode = useColorMode();
-mode.value = "dark";
-
-import {
-  NavigationMenu,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-} from "@/components/ui/navigation-menu";
-import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-
-import { Menu } from "lucide-vue-next";
-import { RouteLocationAsPathGeneric } from "vue-router";
-
-interface RouteProps {
-  href: string;
-  header?:string;
-  label: string;
-}
-
-const routeList: RouteProps[] = [
-  {
-    href: "/core-principles",
-    label: "Core Principles",
-  },  
-  {
-    href: "/documents",
-    label: "Documents",
-  },
-  { 
-    href: "/",
-    header: "games",
-    label: "Games",
-  },
-  {
-    href: "/",
-    header: "reviews",
-    label: "Reviews",
-  },
-  {
-    href: "/",
-    header: "team",
-    label: "Team",
-  },
-  {
-    href: "/",
-    header: "contact",
-    label: "Contact And Next Event",
-  },
-  {
-    href: "/",
-    header: "faq",
-    label: "FAQ",
-  },
+const isOpen = ref(false);
+const links = [
+  { href: "/#games", label: "Games" },
+  { href: "/#reviews", label: "Community" },
+  { href: "/#team", label: "Team" },
+  { href: "/#contact", label: "Next meetup" },
+  { href: "/core-principles", label: "Principles" },
+  { href: "/documents", label: "Documents" },
 ];
 
-function getUrl(href: string, header?: string) {
-  const to: RouteLocationAsPathGeneric = {
-    path: href,
-    hash: header ? `#${header.replace(/^#/, '')}` : '',
-  }
-  return to;
-}
-
-function handleClick(header?: string) {
-  if (header) {
-    setTimeout(() => {
-      const targetElement = document.querySelector(`#${header}`);
-      if (targetElement) {
-        targetElement.scrollIntoView({ behavior: 'smooth' });
-      }
-    }, 100);
-  } else {
-    setTimeout(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 100);
-  }
-}
-
-function handleMobileClick(header?: string) {
-  isOpen.value = false;
-  handleClick(header)
-}
-
-const isOpen = ref<boolean>(false);
+function closeMenu() { isOpen.value = false; }
 </script>
 
 <template>
-  <header
-    :class="{
-      'shadow-dark': mode === 'dark',
-      'w-[90%] md:w-[70%] lg:w-[75%] lg:max-w-screen-xl top-5 mx-auto sticky border z-40 rounded-2xl flex justify-between items-center p-2 bg-card shadow-md': true,
-    }"
-  >
-    <a
-      href="/"
-      class="font-bold text-lg flex items-center"
-    >
-      <img
-          class="w-[3rem] mx-auto rounded-lg relative leading-none flex items-center"
-          :src="'assets/Logo.png'"
-          alt="GamersUnite Logo"
-        />
-      Gamers Unite! LAN
-    </a>
-    <!-- Mobile -->
-    <div class="flex items-center lg:hidden">
-      <Sheet v-model:open="isOpen">
-        <SheetTrigger as-child>
-          <Menu
-            @click="isOpen = true"
-            class="cursor-pointer"
-          />
-        </SheetTrigger>
+  <header class="sticky top-0 z-50 border-b border-primary/20 bg-card/95 backdrop-blur">
+    <nav class="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8" aria-label="Main navigation">
+      <RouterLink to="/" class="flex items-center gap-3 font-extrabold tracking-tight text-foreground" @click="closeMenu">
+        <img src="/assets/Logo.png" alt="Gamers Unite! LAN" class="size-10 rounded-xl object-contain" />
+        <span class="text-lg sm:text-xl">Gamers <span class="text-primary">Unite!</span></span>
+      </RouterLink>
 
-        <SheetContent
-          side="left"
-          class="flex flex-col justify-between rounded-tr-2xl rounded-br-2xl bg-card"
-        >
-          <div>
-            <SheetHeader class="mb-4 ml-4">
-              <SheetTitle class="flex items-center">
-                <a
-                  href="/"
-                  class="flex items-center"
-                >
-                  <img
-                      class="w-[3rem] mx-auto rounded-lg relative leading-none flex items-center"
-                      :src="'assets/Logo.png'"
-                      alt="GamersUnite Logo"
-                    />
-                  Gamers Unite!
-                </a>
-              </SheetTitle>
-            </SheetHeader>
+      <div class="hidden items-center gap-7 text-xs font-bold uppercase tracking-widest text-muted-foreground lg:flex">
+        <RouterLink v-for="link in links" :key="link.label" :to="link.href" class="transition-colors hover:text-primary">{{ link.label }}</RouterLink>
+        <a href="/#community" class="rounded-lg bg-primary px-5 py-3 text-foreground shadow-brand transition hover:bg-secondary">Join Discord</a>
+      </div>
 
-            <div class="flex flex-col gap-2">
-              <Button
-                v-for="{ href, header, label } in routeList"
-                :key="label"
-                as-child
-                variant="ghost"
-                class="justify-start text-base"
-              >
-              <RouterLink :to="getUrl(href, header)" 
-              @click="handleMobileClick(header)">
-                {{ label }}
-              </RouterLink>
-              </Button>
-            </div>
-          </div>
-
-          <SheetFooter class="flex-col sm:flex-col justify-start items-start">
-            <Separator class="mb-2" />
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+      <button class="rounded-lg p-2 text-foreground lg:hidden" type="button" :aria-expanded="isOpen" aria-label="Toggle navigation" @click="isOpen = !isOpen">
+        <X v-if="isOpen" class="size-6" /><Menu v-else class="size-6" />
+      </button>
+    </nav>
+    <div v-if="isOpen" class="border-t border-border bg-card px-4 py-4 lg:hidden">
+      <div class="mx-auto flex max-w-7xl flex-col gap-1">
+        <RouterLink v-for="link in links" :key="link.label" :to="link.href" class="rounded-lg px-4 py-3 font-semibold text-muted-foreground hover:bg-primary/10 hover:text-primary" @click="closeMenu">{{ link.label }}</RouterLink>
+        <a href="/#community" class="mt-2 rounded-lg bg-primary px-4 py-3 text-center font-bold text-foreground" @click="closeMenu">Join Discord</a>
+      </div>
     </div>
-
-    <!-- Desktop -->
-    <NavigationMenu class="hidden lg:block">
-      <NavigationMenuList>
-        <NavigationMenuItem>
-          <NavigationMenuLink asChild>
-            <Button
-              v-for="{ href, header, label } in routeList"
-              :key="label"
-              as-child
-              variant="ghost"
-              class="justify-start text-base"
-            >
-              <RouterLink :to="getUrl(href, header)"  
-              @click="handleClick(header)">
-                {{ label }}
-              </RouterLink>
-            </Button>
-          </NavigationMenuLink>
-        </NavigationMenuItem>
-      </NavigationMenuList>
-    </NavigationMenu>
   </header>
 </template>
-
-<style scoped>
-.shadow-light {
-  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.085);
-}
-
-.shadow-dark {
-  box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.141);
-}
-</style>

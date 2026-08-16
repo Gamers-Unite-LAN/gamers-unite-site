@@ -12,6 +12,6 @@ defineProps<{
     src: string
 }>();
 
-// stops weird errors from google
-(window as any).DOCS_timing = {};
+// Stops errors from Google document embeds in browsers.
+if (typeof window !== "undefined") (window as any).DOCS_timing = {};
 </script>
