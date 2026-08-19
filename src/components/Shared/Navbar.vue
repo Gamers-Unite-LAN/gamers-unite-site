@@ -9,6 +9,7 @@ const links = [
   { href: "/#reviews", label: "Community" },
   { href: "/#team", label: "Team" },
   { href: "/#contact", label: "Next meetup" },
+  //{ href: "/Gallery", label: "Gallery" },
   { href: "/core-principles", label: "Principles" },
   { href: "/documents/expense-policy", label: "Documents" },
 ];

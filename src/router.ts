@@ -5,6 +5,7 @@ import CorePrinciplesPage from "@/pages/CorePrinciplesPage.vue";
 import ImportantDocumentsPage from "@/pages/ImportantDocumentsPage.vue";
 import SafeguardingPolicy from "@/components/ImportantDocuments/SafeguardingPolicy.vue";
 import ExpensePolicy from "@/components/ImportantDocuments/ExpensePolicy.vue";
+import GalleryPage from "@/pages/GalleryPage.vue";
 
 import { externalRoutes } from "./externalRedirects";
 
@@ -16,6 +17,10 @@ export const routes: RouteRecordRaw[] = [
   {
     path: "/core-principles",
     component: CorePrinciplesPage,
+  },
+  {
+    path: "/gallery",
+    component: GalleryPage,
   },
   {
     path: "/documents",
