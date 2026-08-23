@@ -13,7 +13,7 @@
 <script setup lang="ts">
 import EventTile from '@/components/Gallery/EventTile.vue';
 
-const props = defineProps<{
+defineProps<{
     event: string;
 }>();
 
