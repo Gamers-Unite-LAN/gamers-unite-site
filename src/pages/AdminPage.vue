@@ -7,14 +7,13 @@
       <p v-if="isValidApiKey" class="text-muted-foreground">Create events and upload their photos.</p>
     </header>
 
-    <Accordion type="single" collapsible class="mb-8 rounded-2xl border border-border bg-card shadow-sm">
+    <Accordion type="single" collapsible class="mb-8 rounded-2xl">
       <AccordionItem value="api-config" class="border-b-0 px-5 sm:px-6">
         <AccordionTrigger class="py-4 hover:no-underline">
           <div class="flex flex-wrap items-center gap-3 text-left">
-            <span class="text-sm font-bold text-foreground">API Configuration</span>
+            <span class="text-sm font-bold text-foreground">API </span>
             <span
-              class="inline-flex items-center rounded-md border border-border/80 bg-background/80 px-2.5 py-1 text-xs font-mono text-muted-foreground transition-colors"
-            >
+              class="inline-flex items-center rounded-md border border-border/80 bg-background/80 px-2.5 py-1 text-xs font-mono text-muted-foreground transition-colors">
               {{ apiUrl ? apiUrl : "Default (Same Origin)" }}
             </span>
           </div>
@@ -22,19 +21,17 @@
         <AccordionContent class="pb-5 pt-1 text-muted-foreground">
           <div class="space-y-3">
             <div>
-              <label for="api-url" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <label for="api-url"
+                class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Target Endpoint URL
               </label>
-              <input
-                id="api-url"
-                v-model="apiUrl"
-                type="url"
-                placeholder="https://api.example.com"
-                class="w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-sm text-foreground transition-colors placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              />
+              <input id="api-url" v-model="apiUrl" type="url" placeholder="https://api.example.com"
+                class="w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-sm text-foreground transition-colors placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
             </div>
             <p class="text-xs leading-relaxed text-muted-foreground">
-              Leave blank when the API is hosted on this same domain or proxied. In local development, leaving this blank proxies <code class="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">/api</code> to <code class="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">http://localhost:3000</code>.
+              Leave blank when the API is hosted on this same domain or proxied. In local development, leaving this
+              blank proxies <code class="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">/api</code> to <code
+                class="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">http://localhost:3000</code>.
             </p>
           </div>
         </AccordionContent>
@@ -149,6 +146,7 @@ type UploadStatus = { name: string; state: "pending" | "uploading" | "uploaded" 
 const apiUrl = ref(import.meta.env.VITE_API_URL || "");
 const apiKey = ref("");
 const isValidApiKey = ref(false);
+const validating = ref(false);
 const eventName = ref("");
 const eventDate = ref("");
 const events = ref<EventSummary[]>([]);
