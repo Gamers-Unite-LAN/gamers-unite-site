@@ -1,8 +1,9 @@
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 
-const defaultDatabasePath = resolve("src-api/data/gamers-unite.sqlite");
+const defaultDatabasePath = resolve(dirname(fileURLToPath(import.meta.url)), "data/gamers-unite.sqlite");
 
 export function createDatabase(databasePath = process.env.DATABASE_PATH || defaultDatabasePath) {
   const path = databasePath === ":memory:" ? databasePath : resolve(databasePath);
