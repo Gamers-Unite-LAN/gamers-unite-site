@@ -4,6 +4,8 @@ import express from "express";
 import { createDatabase } from "./db.js";
 import { createStorage } from "./storage.js";
 import { getCorsHeaders, createRateLimiter } from "./utils.js";
+import { requestLogger } from "./middleware.js";
+import { logger } from "./logger.js";
 import { validateEvent } from "./endpoints/events.js";
 import { validateGameRecommendation } from "./endpoints/game-recommendations.js";
 import { loadEndpoints } from "./endpoints/index.js";
@@ -17,8 +19,11 @@ export {
 
 function createStorageOrNull() {
   try {
-    return createStorage();
+    const storage = createStorage();
+    logger.info("Storage driver initialized successfully");
+    return storage;
   } catch {
+    logger.warn("S3 Storage unconfigured; image upload/deletion routes will be disabled");
     return null;
   }
 }
@@ -30,6 +35,9 @@ export function createApiServer(
 ) {
   const app = express();
   app.disable("x-powered-by");
+
+  // HTTP access logging
+  app.use(requestLogger);
 
   // CORS middleware applying the same whitelist logic
   app.use((req, res, next) => {
@@ -50,6 +58,7 @@ export function createApiServer(
 
   // Catch-all 404 handler for unmatched routes
   app.use((req, res) => {
+    logger.warn(`Unmatched route: ${req.method} ${req.originalUrl}`);
     res.status(404).json({ error: "Not found." });
   });
 
@@ -62,11 +71,15 @@ export function startServer() {
   const port = Number(process.env.PORT || 3000);
 
   server.listen(port, () => {
-    console.log(`Gamers Unite API listening on http://localhost:${port}`);
+    logger.info(`Gamers Unite API listening on http://localhost:${port}`);
   });
 
   const shutdown = () => {
-    server.close(() => db.close());
+    logger.info("Server shutting down gracefully...");
+    server.close(() => {
+      db.close();
+      logger.info("Database connection closed. Goodbye.");
+    });
   };
   process.once("SIGINT", shutdown);
   process.once("SIGTERM", shutdown);

@@ -1,6 +1,7 @@
 import { readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { logger } from "../logger.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -24,9 +25,12 @@ const endpointModules = await Promise.all(
 );
 
 export function loadEndpoints(app, context) {
-  for (const { register } of endpointModules) {
+  for (const { file, register } of endpointModules) {
     if (typeof register === "function") {
       register(app, context);
+      logger.debug(`Loaded endpoint module: ${file}`);
+    } else {
+      logger.warn(`Endpoint module ${file} does not export a register function.`);
     }
   }
 }
