@@ -24,3 +24,4 @@ src-api/data/
 *.sln
 *.sw?
 src-api/db.js
+src-api/.env
