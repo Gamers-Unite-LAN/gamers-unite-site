@@ -7,24 +7,39 @@
       <p v-if="isValidApiKey" class="text-muted-foreground">Create events and upload their photos.</p>
     </header>
 
-    <div>
-      <!-- TODO: Needs to be accordion so that we can change the URL if needed -->
-      <div v-if="!expandedApiUrl" class="mb-6 rounded-xl border bg-card p-5 shadow-sm flex justify-around items-center">
-        <p class="text-sm font-bold">API URL</p>
-        <div class="flex items-center gap-2">
-          <span class="rounded-lg border bg-background px-3 py-2 text-muted-foreground">{{ apiUrl }}</span>
-          <button type="button" class="text-sm font-bold text-primary" @click="expandedApiUrl = true">Change</button>
-        </div>
-      </div>
-      <div v-else class="mb-6 rounded-xl border bg-card p-5 shadow-sm">
-        <label for="api-url" class="mb-2 block text-sm font-bold">API URL</label>
-        <input id="api-url" v-model="apiUrl" type="url" placeholder="https://api.example.com"
-          class="w-full rounded-lg border bg-background px-3 py-2" />
-        <p class="mt-2 text-sm text-muted-foreground">Leave blank when the API shares this domain. In development, /api
-          is
-          proxied to http://localhost:3000.</p>
-      </div>
-    </div>
+    <Accordion type="single" collapsible class="mb-8 rounded-2xl border border-border bg-card shadow-sm">
+      <AccordionItem value="api-config" class="border-b-0 px-5 sm:px-6">
+        <AccordionTrigger class="py-4 hover:no-underline">
+          <div class="flex flex-wrap items-center gap-3 text-left">
+            <span class="text-sm font-bold text-foreground">API Configuration</span>
+            <span
+              class="inline-flex items-center rounded-md border border-border/80 bg-background/80 px-2.5 py-1 text-xs font-mono text-muted-foreground transition-colors"
+            >
+              {{ apiUrl ? apiUrl : "Default (Same Origin)" }}
+            </span>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent class="pb-5 pt-1 text-muted-foreground">
+          <div class="space-y-3">
+            <div>
+              <label for="api-url" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Target Endpoint URL
+              </label>
+              <input
+                id="api-url"
+                v-model="apiUrl"
+                type="url"
+                placeholder="https://api.example.com"
+                class="w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-sm text-foreground transition-colors placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <p class="text-xs leading-relaxed text-muted-foreground">
+              Leave blank when the API is hosted on this same domain or proxied. In local development, leaving this blank proxies <code class="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">/api</code> to <code class="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">http://localhost:3000</code>.
+            </p>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
 
     <template v-if="!isValidApiKey">
       <form class="mt-5 space-y-4" @submit.prevent="validateApiKey">
@@ -125,6 +140,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 type EventSummary = { name: string; slug: string; eventDate: string; coverUrl: string | null };
 type EventDetail = { event: Omit<EventSummary, "coverUrl">; images: { id: string; url: string | null; isCover: boolean }[] };
@@ -133,7 +149,6 @@ type UploadStatus = { name: string; state: "pending" | "uploading" | "uploaded" 
 const apiUrl = ref(import.meta.env.VITE_API_URL || "");
 const apiKey = ref("");
 const isValidApiKey = ref(false);
-const validating = ref(false);
 const eventName = ref("");
 const eventDate = ref("");
 const events = ref<EventSummary[]>([]);
@@ -147,7 +162,6 @@ const uploading = ref(false);
 const error = ref("");
 const notice = ref("");
 const uploadStatuses = ref<UploadStatus[]>([]);
-const expandedApiUrl = ref(false);
 
 const selectedEventName = computed(() => selectedEvent.value?.event.name || "No event selected");
 
@@ -167,7 +181,6 @@ async function validateApiKey() {
   validating.value = true;
   if (!apiKey.value) return;
   try {
-    debugger;
     const response = await request("/api/validate", { headers: { authorization: `Bearer ${apiKey.value}` } });
     const body = await response.json() as { valid: boolean };
     isValidApiKey.value = body.valid;
