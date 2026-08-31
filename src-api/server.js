@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { createServer as createHttpServer } from "node:http";
 import { pathToFileURL } from "node:url";
 import express from "express";
@@ -23,7 +24,9 @@ function createStorageOrNull() {
     logger.info("Storage driver initialized successfully");
     return storage;
   } catch {
-    logger.warn("S3 Storage unconfigured; image upload/deletion routes will be disabled");
+    logger.warn(
+      "S3 Storage unconfigured; image upload/deletion routes will be disabled",
+    );
     return null;
   }
 }
