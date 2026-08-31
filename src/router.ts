@@ -6,6 +6,7 @@ import ImportantDocumentsPage from "@/pages/ImportantDocumentsPage.vue";
 import SafeguardingPolicy from "@/components/ImportantDocuments/SafeguardingPolicy.vue";
 import ExpensePolicy from "@/components/ImportantDocuments/ExpensePolicy.vue";
 import GalleryPage from "@/pages/GalleryPage.vue";
+import AdminPage from "@/pages/AdminPage.vue";
 
 import { externalRoutes } from "./externalRedirects";
 
@@ -21,6 +22,10 @@ export const routes: RouteRecordRaw[] = [
   {
     path: "/gallery",
     component: GalleryPage,
+  },
+  {
+    path: "/admin",
+    component: AdminPage,
   },
   {
     path: "/documents",

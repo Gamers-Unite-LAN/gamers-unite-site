@@ -13,6 +13,13 @@ export default defineConfig({
     },
   },
   plugins: [vue()],
+  server: {
+    proxy: {
+      // Local dev: serve /api same-origin and forward to the API server,
+      // so browser requests never need CORS.
+      "/api": "http://localhost:3000",
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
