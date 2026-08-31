@@ -60,8 +60,8 @@
           <form class="mt-5 space-y-4" @submit.prevent="createEvent">
             <div>
               <label for="api-key" class="mb-2 block text-sm font-bold">Upload API key</label>
-              <input id="api-key" v-model="apiKey" type="password" required autocomplete="off"
-                class="w-full rounded-lg border bg-background px-3 py-2" />
+              <input id="api-key" v-model="apiKey" disabled type="password" required autocomplete="off"
+                class="w-full rounded-lg border bg-background px-3 py-2 opacity-50" />
             </div>
             <div>
               <label for="event-name" class="mb-2 block text-sm font-bold">Event name</label>
