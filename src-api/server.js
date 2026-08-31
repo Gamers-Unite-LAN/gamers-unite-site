@@ -1,28 +1,46 @@
 import { createServer as createHttpServer } from "node:http";
 import { pathToFileURL } from "node:url";
 import { createDatabase } from "./db.js";
-import { createStorage, generateImageId, isValidPathSegment, keyForImage } from "./storage.js";
+import {
+  createStorage,
+  generateImageId,
+  isValidPathSegment,
+  keyForImage,
+} from "./storage.js";
 
 const MAX_BODY_SIZE = 16 * 1024;
 const MAX_GAME_NAME_LENGTH = 120;
 const MAX_DESCRIPTION_LENGTH = 1_000;
 const MAX_RECOMMENDER_LENGTH = 120;
 const MAX_IMAGE_SIZE = Number(process.env.MAX_IMAGE_SIZE || 8 * 1024 * 1024);
-const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+]);
 const MAX_EVENT_NAME_LENGTH = 120;
 const EVENT_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 30);
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000);
 const PRODUCTION_ORIGIN = "https://gamersunitelan.com";
 
-export function getCorsHeaders(origin, development = process.env.NODE_ENV === "development") {
-  const allowed = origin === PRODUCTION_ORIGIN || (development && /^http:\/\/(localhost|127\.0\.0\.1)(?::\d+)?$/.test(origin || ""));
-  return allowed ? {
-    "access-control-allow-origin": origin,
-    "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
-    "access-control-allow-headers": "Content-Type, Authorization",
-    vary: "Origin",
-  } : {};
+export function getCorsHeaders(
+  origin,
+  development = process.env.NODE_ENV === "development",
+) {
+  const allowed =
+    origin === PRODUCTION_ORIGIN ||
+    (development &&
+      /^http:\/\/(localhost|127\.0\.0\.1)(?::\d+)?$/.test(origin || ""));
+  return allowed
+    ? {
+        "access-control-allow-origin": origin,
+        "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+        "access-control-allow-headers": "Content-Type, Authorization",
+        vary: "Origin",
+      }
+    : {};
 }
 
 // Uploads and deletes require a shared secret; listing/serving images is
@@ -39,22 +57,32 @@ function isAuthorizedUploader(request) {
 
 async function readBinaryBody(request, maxSize) {
   const contentLength = Number(request.headers["content-length"] || 0);
-  if (!Number.isFinite(contentLength) || contentLength <= 0 || contentLength > maxSize) {
-    throw new Error(`Request body must be between 1 byte and ${maxSize} bytes.`);
+  if (
+    !Number.isFinite(contentLength) ||
+    contentLength <= 0 ||
+    contentLength > maxSize
+  ) {
+    throw new Error(
+      `Request body must be between 1 byte and ${maxSize} bytes.`,
+    );
   }
 
   const chunks = [];
   let size = 0;
   for await (const chunk of request) {
     size += chunk.length;
-    if (size > maxSize) throw new Error(`Request body must be ${maxSize} bytes or fewer.`);
+    if (size > maxSize)
+      throw new Error(`Request body must be ${maxSize} bytes or fewer.`);
     chunks.push(chunk);
   }
 
   return Buffer.concat(chunks);
 }
 
-export function createRateLimiter(maxRequests = RATE_LIMIT_MAX, windowMs = RATE_LIMIT_WINDOW_MS) {
+export function createRateLimiter(
+  maxRequests = RATE_LIMIT_MAX,
+  windowMs = RATE_LIMIT_WINDOW_MS,
+) {
   const requests = new Map();
 
   return (key, now = Date.now()) => {
@@ -65,7 +93,10 @@ export function createRateLimiter(maxRequests = RATE_LIMIT_MAX, windowMs = RATE_
     }
 
     entry.count += 1;
-    return { allowed: entry.count <= maxRequests, retryAfter: Math.ceil((entry.resetAt - now) / 1000) };
+    return {
+      allowed: entry.count <= maxRequests,
+      retryAfter: Math.ceil((entry.resetAt - now) / 1000),
+    };
   };
 }
 
@@ -75,7 +106,8 @@ function cleanString(value, field, maxLength, required = false) {
 
   const trimmed = value.trim();
   if (required && !trimmed) return { error: `${field} is required.` };
-  if (trimmed.length > maxLength) return { error: `${field} must be ${maxLength} characters or fewer.` };
+  if (trimmed.length > maxLength)
+    return { error: `${field} must be ${maxLength} characters or fewer.` };
 
   return { value: trimmed };
 }
@@ -118,13 +150,26 @@ export function validateGameRecommendation(input) {
     return { error: "Request body must be a JSON object." };
   }
 
-  const gameName = cleanString(input.gameName, "gameName", MAX_GAME_NAME_LENGTH, true);
+  const gameName = cleanString(
+    input.gameName,
+    "gameName",
+    MAX_GAME_NAME_LENGTH,
+    true,
+  );
   if (gameName.error) return gameName;
 
-  const description = cleanString(input.description, "description", MAX_DESCRIPTION_LENGTH);
+  const description = cleanString(
+    input.description,
+    "description",
+    MAX_DESCRIPTION_LENGTH,
+  );
   if (description.error) return description;
 
-  const recommendedBy = cleanString(input.recommendedBy, "recommendedBy", MAX_RECOMMENDER_LENGTH);
+  const recommendedBy = cleanString(
+    input.recommendedBy,
+    "recommendedBy",
+    MAX_RECOMMENDER_LENGTH,
+  );
   if (recommendedBy.error) return recommendedBy;
 
   return {
@@ -137,13 +182,20 @@ export function validateGameRecommendation(input) {
 }
 
 function sendJson(response, status, body, headers = {}) {
-  response.writeHead(status, { "content-type": "application/json; charset=utf-8", ...headers });
+  response.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    ...headers,
+  });
   response.end(JSON.stringify(body));
 }
 
 async function readJson(request) {
   const contentLength = Number(request.headers["content-length"] || 0);
-  if (!Number.isFinite(contentLength) || contentLength < 0 || contentLength > MAX_BODY_SIZE) {
+  if (
+    !Number.isFinite(contentLength) ||
+    contentLength < 0 ||
+    contentLength > MAX_BODY_SIZE
+  ) {
     throw new Error("Request body is too large.");
   }
 
@@ -172,7 +224,11 @@ function createStorageOrNull() {
   }
 }
 
-export function createApiServer(db = createDatabase(), rateLimit = createRateLimiter(), storage = createStorageOrNull()) {
+export function createApiServer(
+  db = createDatabase(),
+  rateLimit = createRateLimiter(),
+  storage = createStorageOrNull(),
+) {
   const listRecommendations = db.prepare(`
     SELECT id, game_name AS gameName, description, recommended_by AS recommendedBy, created_at AS createdAt
     FROM game_recommendations
@@ -188,7 +244,9 @@ export function createApiServer(db = createDatabase(), rateLimit = createRateLim
     WHERE id = ?
   `);
 
-  const insertEvent = db.prepare(`INSERT INTO events (name, slug, event_date) VALUES (?, ?, ?)`);
+  const insertEvent = db.prepare(
+    `INSERT INTO events (name, slug, event_date) VALUES (?, ?, ?)`,
+  );
   const listEvents = db.prepare(`
     SELECT e.id, e.name, e.slug, e.event_date AS eventDate, i.storage_key AS coverStorageKey
     FROM events e
@@ -215,7 +273,9 @@ export function createApiServer(db = createDatabase(), rateLimit = createRateLim
     FROM images WHERE id = ?
   `);
   const deleteImageById = db.prepare(`DELETE FROM images WHERE id = ?`);
-  const setEventCover = db.prepare(`UPDATE events SET cover_image_id = ? WHERE id = ?`);
+  const setEventCover = db.prepare(
+    `UPDATE events SET cover_image_id = ? WHERE id = ?`,
+  );
 
   function uniqueSlug(baseSlug) {
     if (!findEventBySlug.get(baseSlug)) return baseSlug;
@@ -228,7 +288,8 @@ export function createApiServer(db = createDatabase(), rateLimit = createRateLim
 
   return createHttpServer(async (request, response) => {
     const corsHeaders = getCorsHeaders(request.headers.origin);
-    for (const [name, value] of Object.entries(corsHeaders)) response.setHeader(name, value);
+    for (const [name, value] of Object.entries(corsHeaders))
+      response.setHeader(name, value);
 
     if (request.method === "OPTIONS") {
       response.writeHead(204);
@@ -243,21 +304,50 @@ export function createApiServer(db = createDatabase(), rateLimit = createRateLim
       return;
     }
 
-    if (request.method === "GET" && url.pathname === "/api/game-recommendations") {
-      sendJson(response, 200, { gameRecommendations: listRecommendations.all() });
+    if (request.method === "GET" && url.pathname === "/api/validate") {
+      if (!isAuthorizedUploader(request)) {
+        sendJson(response, 401, { valid: false });
+        return;
+      } else {
+        return sendJson(response, 200, { valid: true });
+      }
+    }
+
+    if (
+      request.method === "GET" &&
+      url.pathname === "/api/game-recommendations"
+    ) {
+      sendJson(response, 200, {
+        gameRecommendations: listRecommendations.all(),
+      });
       return;
     }
 
-    if (request.method === "POST" && url.pathname === "/api/game-recommendations") {
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/game-recommendations"
+    ) {
       const client = request.socket.remoteAddress || "unknown";
       const limit = rateLimit(client);
       if (!limit.allowed) {
-        sendJson(response, 429, { error: "Too many recommendations. Try again shortly." }, { "retry-after": limit.retryAfter });
+        sendJson(
+          response,
+          429,
+          { error: "Too many recommendations. Try again shortly." },
+          { "retry-after": limit.retryAfter },
+        );
         return;
       }
 
-      if (request.headers["content-type"]?.split(";", 1)[0].trim().toLowerCase() !== "application/json") {
-        sendJson(response, 400, { error: "Content-Type must be application/json." });
+      if (
+        request.headers["content-type"]
+          ?.split(";", 1)[0]
+          .trim()
+          .toLowerCase() !== "application/json"
+      ) {
+        sendJson(response, 400, {
+          error: "Content-Type must be application/json.",
+        });
         return;
       }
 
@@ -281,14 +371,20 @@ export function createApiServer(db = createDatabase(), rateLimit = createRateLim
           validation.value.description,
           validation.value.recommendedBy,
         );
-        sendJson(response, 201, { gameRecommendation: findRecommendation.get(result.lastInsertRowid) });
+        sendJson(response, 201, {
+          gameRecommendation: findRecommendation.get(result.lastInsertRowid),
+        });
       } catch (error) {
         if (error.code === "ERR_SQLITE_ERROR" && error.errcode === 2067) {
-          sendJson(response, 409, { error: "This game has already been recommended." });
+          sendJson(response, 409, {
+            error: "This game has already been recommended.",
+          });
           return;
         }
 
-        sendJson(response, 500, { error: "Unable to save game recommendation." });
+        sendJson(response, 500, {
+          error: "Unable to save game recommendation.",
+        });
       }
       return;
     }
@@ -300,7 +396,10 @@ export function createApiServer(db = createDatabase(), rateLimit = createRateLim
           name: row.name,
           slug: row.slug,
           eventDate: row.eventDate,
-          coverUrl: row.coverStorageKey && storage ? storage.publicUrl(row.coverStorageKey) : null,
+          coverUrl:
+            row.coverStorageKey && storage
+              ? storage.publicUrl(row.coverStorageKey)
+              : null,
         })),
       });
       return;
@@ -308,12 +407,21 @@ export function createApiServer(db = createDatabase(), rateLimit = createRateLim
 
     if (request.method === "POST" && url.pathname === "/api/events") {
       if (!isAuthorizedUploader(request)) {
-        sendJson(response, 401, { error: "Missing or invalid upload credentials." });
+        sendJson(response, 401, {
+          error: "Missing or invalid upload credentials.",
+        });
         return;
       }
 
-      if (request.headers["content-type"]?.split(";", 1)[0].trim().toLowerCase() !== "application/json") {
-        sendJson(response, 400, { error: "Content-Type must be application/json." });
+      if (
+        request.headers["content-type"]
+          ?.split(";", 1)[0]
+          .trim()
+          .toLowerCase() !== "application/json"
+      ) {
+        sendJson(response, 400, {
+          error: "Content-Type must be application/json.",
+        });
         return;
       }
 
@@ -333,9 +441,18 @@ export function createApiServer(db = createDatabase(), rateLimit = createRateLim
 
       try {
         const slug = uniqueSlug(validation.value.slug);
-        const result = insertEvent.run(validation.value.name, slug, validation.value.eventDate);
+        const result = insertEvent.run(
+          validation.value.name,
+          slug,
+          validation.value.eventDate,
+        );
         sendJson(response, 201, {
-          event: { id: result.lastInsertRowid, name: validation.value.name, slug, eventDate: validation.value.eventDate },
+          event: {
+            id: result.lastInsertRowid,
+            name: validation.value.name,
+            slug,
+            eventDate: validation.value.eventDate,
+          },
         });
       } catch {
         sendJson(response, 500, { error: "Unable to create event." });
@@ -343,7 +460,9 @@ export function createApiServer(db = createDatabase(), rateLimit = createRateLim
       return;
     }
 
-    const eventSlugMatch = url.pathname.match(/^\/api\/events\/([^/]+)(?:\/(images))?$/);
+    const eventSlugMatch = url.pathname.match(
+      /^\/api\/events\/([^/]+)(?:\/(images))?$/,
+    );
     if (eventSlugMatch) {
       const [, slug, subresource] = eventSlugMatch;
       const event = findEventBySlug.get(decodeURIComponent(slug));
@@ -362,7 +481,11 @@ export function createApiServer(db = createDatabase(), rateLimit = createRateLim
           isCover: image.id === event.coverImageId,
         }));
         sendJson(response, 200, {
-          event: { name: event.name, slug: event.slug, eventDate: event.eventDate },
+          event: {
+            name: event.name,
+            slug: event.slug,
+            eventDate: event.eventDate,
+          },
           images,
         });
         return;
@@ -370,11 +493,15 @@ export function createApiServer(db = createDatabase(), rateLimit = createRateLim
 
       if (request.method === "POST" && subresource === "images") {
         if (!storage) {
-          sendJson(response, 503, { error: "Image storage is not configured." });
+          sendJson(response, 503, {
+            error: "Image storage is not configured.",
+          });
           return;
         }
         if (!isAuthorizedUploader(request)) {
-          sendJson(response, 401, { error: "Missing or invalid upload credentials." });
+          sendJson(response, 401, {
+            error: "Missing or invalid upload credentials.",
+          });
           return;
         }
         if (!event) {
@@ -382,9 +509,14 @@ export function createApiServer(db = createDatabase(), rateLimit = createRateLim
           return;
         }
 
-        const contentType = request.headers["content-type"]?.split(";", 1)[0].trim().toLowerCase();
+        const contentType = request.headers["content-type"]
+          ?.split(";", 1)[0]
+          .trim()
+          .toLowerCase();
         if (!ALLOWED_IMAGE_TYPES.has(contentType)) {
-          sendJson(response, 400, { error: `Content-Type must be one of: ${[...ALLOWED_IMAGE_TYPES].join(", ")}.` });
+          sendJson(response, 400, {
+            error: `Content-Type must be one of: ${[...ALLOWED_IMAGE_TYPES].join(", ")}.`,
+          });
           return;
         }
 
@@ -401,13 +533,20 @@ export function createApiServer(db = createDatabase(), rateLimit = createRateLim
         const storageKey = keyForImage(event.slug, id);
 
         try {
-          const imageUrl = await storage.putImage(storageKey, body, contentType);
+          const imageUrl = await storage.putImage(
+            storageKey,
+            body,
+            contentType,
+          );
           insertImage.run(id, event.id, storageKey, contentType, body.length);
 
-          const makeCover = url.searchParams.get("cover") === "true" || !event.coverImageId;
+          const makeCover =
+            url.searchParams.get("cover") === "true" || !event.coverImageId;
           if (makeCover) setEventCover.run(id, event.id);
 
-          sendJson(response, 201, { image: { id, url: imageUrl, isCover: makeCover } });
+          sendJson(response, 201, {
+            image: { id, url: imageUrl, isCover: makeCover },
+          });
         } catch {
           sendJson(response, 502, { error: "Unable to store image." });
         }
@@ -415,13 +554,18 @@ export function createApiServer(db = createDatabase(), rateLimit = createRateLim
       }
     }
 
-    if (request.method === "DELETE" && url.pathname.startsWith("/api/images/")) {
+    if (
+      request.method === "DELETE" &&
+      url.pathname.startsWith("/api/images/")
+    ) {
       if (!storage) {
         sendJson(response, 503, { error: "Image storage is not configured." });
         return;
       }
       if (!isAuthorizedUploader(request)) {
-        sendJson(response, 401, { error: "Missing or invalid upload credentials." });
+        sendJson(response, 401, {
+          error: "Missing or invalid upload credentials.",
+        });
         return;
       }
 
@@ -448,13 +592,20 @@ export function createApiServer(db = createDatabase(), rateLimit = createRateLim
       return;
     }
 
-    if (request.method === "DELETE" && url.pathname.startsWith("/api/events/")) {
+    if (
+      request.method === "DELETE" &&
+      url.pathname.startsWith("/api/events/")
+    ) {
       if (!isAuthorizedUploader(request)) {
-        sendJson(response, 401, { error: "Missing or invalid upload credentials." });
+        sendJson(response, 401, {
+          error: "Missing or invalid upload credentials.",
+        });
         return;
       }
 
-      const slug = decodeURIComponent(url.pathname.slice("/api/events/".length));
+      const slug = decodeURIComponent(
+        url.pathname.slice("/api/events/".length),
+      );
       const event = findEventBySlug.get(slug);
       if (!event) {
         sendJson(response, 404, { error: "Event not found." });
@@ -464,7 +615,8 @@ export function createApiServer(db = createDatabase(), rateLimit = createRateLim
       const images = listImagesForEvent.all(event.id);
       try {
         if (storage) {
-          for (const image of images) await storage.deleteImage(image.storageKey);
+          for (const image of images)
+            await storage.deleteImage(image.storageKey);
         }
         deleteEventById.run(event.id);
         response.writeHead(204);
@@ -495,6 +647,9 @@ export function startServer() {
   process.once("SIGTERM", shutdown);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   startServer();
 }
