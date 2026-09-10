@@ -1,99 +1,187 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import EventColumn from '@/components/Gallery/EventTileColumn.vue';
-import { vOnClickOutside } from '@vueuse/components'
+import { computed, onMounted, ref } from "vue";
+import { vOnClickOutside } from "@vueuse/components";
+import EventColumn from "@/components/Gallery/EventTileColumn.vue";
 
+type Season = "winter" | "spring" | "summer" | "autumn";
+type EventSummary = {
+  name: string;
+  slug: string;
+  eventDate: string;
+  season: Season | null;
+  coverUrl: string | null;
+};
+type EventImage = {
+  id: string;
+  url: string | null;
+  contentType: string;
+  isCover: boolean;
+};
+type EventDetail = {
+  event: Omit<EventSummary, "coverUrl">;
+  images: EventImage[];
+};
 
+const seasons: Season[] = ["winter", "spring", "summer", "autumn"];
+const apiUrl = import.meta.env.VITE_API_URL || "";
 const showOverview = ref(true);
+const events = ref<EventSummary[]>([]);
+const selectedEvent = ref<EventDetail | null>(null);
+const loadingEvents = ref(false);
+const loadingImages = ref(false);
+const error = ref("");
+const largeImage = ref<string | null>(null);
 
-function showEvent(eventId: string) {
-    showOverview.value = false;
-    loadEventImages(eventId);
+const eventsBySeason = computed(() =>
+  Object.fromEntries(
+    seasons.map((season) => [season, events.value.filter((event) => event.season === season)]),
+  ) as Record<Season, EventSummary[]>,
+);
+const visibleImages = computed(() => selectedEvent.value?.images.filter((image) => image.url) || []);
+
+function seasonLabel(season: Season) {
+  return season.charAt(0).toUpperCase() + season.slice(1);
+}
+
+function endpoint(path: string) {
+  return `${apiUrl.replace(/\/$/, "")}${path}`;
+}
+
+async function request(path: string) {
+  const response = await fetch(endpoint(path));
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error || `Request failed (${response.status}).`);
+  }
+  return response;
+}
+
+async function loadEvents() {
+  loadingEvents.value = true;
+  error.value = "";
+  try {
+    const response = await request("/api/events");
+    const body = await response.json() as { events: EventSummary[] };
+    events.value = body.events;
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : "Unable to load gallery events.";
+  } finally {
+    loadingEvents.value = false;
+  }
+}
+
+async function showEvent(slug: string) {
+  showOverview.value = false;
+  selectedEvent.value = null;
+  loadingImages.value = true;
+  error.value = "";
+  try {
+    const response = await request(`/api/events/${encodeURIComponent(slug)}`);
+    selectedEvent.value = await response.json() as EventDetail;
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : "Unable to load event images.";
+  } finally {
+    loadingImages.value = false;
+  }
 }
 
 function reset() {
-    showOverview.value = true;
-    eventImgs.value = [];
+  showOverview.value = true;
+  selectedEvent.value = null;
+  largeImage.value = null;
+  error.value = "";
 }
 
-const eventImgs = ref<string[]>([]);
-function loadEventImages(eventId: string) {
-    // Placeholder for loading event images based on the eventId
-    // This function can be expanded to fetch images from an API or a local source
-    console.log(`Loading images for event: ${eventId}`);
-    eventImgs.value = [
-        `https://placecats.com/200/300?event=${eventId}`,
-        `https://placecats.com/300/200?event=${eventId}`,
-        `https://placecats.com/200/300?event=${eventId}`,
-        `https://placecats.com/300/200?event=${eventId}`,
-        `https://placecats.com/200/300?event=${eventId}`,
-        `https://placecats.com/300/200?event=${eventId}`,
-        `https://placecats.com/200/300?event=${eventId}`,
-        `https://placecats.com/300/200?event=${eventId}`,
-        `https://placecats.com/200/300?event=${eventId}`,
-        `https://placecats.com/300/200?event=${eventId}`,
-    ];
+function showLargeImage(url: string) {
+  largeImage.value = url;
 }
 
-const largeImg = ref<string | null>(null);
-function showLargeImage(img: string) {
-    largeImg.value = img;
-}
+onMounted(loadEvents);
 </script>
 
 <template>
-    <section class="container">
-        <div class="grid place-items-center lg:max-w-screen-xl gap-8 mx-auto py-16 md:py-20">
-            <div class="text-center space-y-8">
-                <div class="max-w-screen-md mx-auto text-center text-5xl md:text-6xl font-bold">
-                    <h1>Gallery</h1>
-                </div>
-                <div class="max-w-screen-md mx-auto text-center text-2xl md:text-2xl font-bold">
-                    <h2> Check out our previous <span class="text-primary">LANs</span></h2>
-                </div>
-            </div>
+  <main class="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+    <header class="mx-auto mb-12 max-w-3xl text-center">
+      <h1 class="text-5xl font-extrabold tracking-tight sm:text-6xl">Gallery</h1>
+      <p class="mt-5 text-lg leading-8 text-muted-foreground">Look back at the LANs, season by season.</p>
+    </header>
 
-            <div v-if="showOverview"
-                class="mx-auto flex flex-col justify-evenly gap-6 px-4 sm:px-6 lg:flex-row lg:gap-0 lg:px-8">
-                <EventColumn event="winter" @eventClicked="showEvent" />
-                <EventColumn event="spring" @eventClicked="showEvent" />
-                <EventColumn event="summer" @eventClicked="showEvent" />
-                <EventColumn event="autumn" @eventClicked="showEvent" />
-            </div>
+    <p v-if="error" class="mx-auto mb-8 max-w-2xl rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-center text-destructive" role="alert">
+      {{ error }}
+    </p>
+    <p v-if="loadingEvents" class="py-12 text-center text-muted-foreground" role="status">Loading events…</p>
 
-            <div v-else
-                class="mx-auto flex flex-col flex-wrap justify-evenly gap-20 px-4 sm:px-6 lg:flex-row lg:gap-20 lg:px-8">
-                <div v-for="(img, index) in eventImgs" :key="index"
-                    class="rounded-[2rem] border border-base-300 bg-base-100 p-6 shadow-sm lg:w-[23%]">
-                    <img :src="img" alt="Event Image" @click="showLargeImage(img)" class="cursor-pointer" />
-                </div>
-            </div>
+    <div v-if="showOverview && !loadingEvents" class="grid gap-10 sm:grid-cols-2 xl:grid-cols-4">
+      <EventColumn
+        v-for="season in seasons"
+        :key="season"
+        :season="season"
+        :events="eventsBySeason[season]"
+        @event-clicked="showEvent"
+      />
+    </div>
 
-            <Transition enter-active-class="transition-all duration-500 ease-out"
-                enter-from-class="opacity-0 translate-y-8" enter-to-class="opacity-100 translate-y-0"
-                leave-active-class="transition-all duration-300 ease-in" leave-from-class="opacity-100 translate-y-0"
-                leave-to-class="opacity-0 translate-y-8">
-                <button v-if="!showOverview" @click="reset"
-                    class="fixed bottom-0 left-0 w-full btn bg-primary btn-lg px-8 py-4 text-xl font-bold">
-                    Back to events
-                </button>
-            </Transition>
-
-            <Transition enter-active-class="transition-all duration-500 ease-out"
-                enter-from-class="opacity-0 translate-y-8" enter-to-class="opacity-100 translate-y-0"
-                leave-active-class="transition-all duration-300 ease-in" leave-from-class="opacity-100 translate-y-0"
-                leave-to-class="opacity-0 translate-y-8">
-                <div v-if="largeImg" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
-                    v-on-click-outside="() => largeImg = null">
-                    <div class="bg-white p-4 rounded-lg max-w-lg w-full relative">
-                        <button @click="largeImg = null"
-                            class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
-                            &times;
-                        </button>
-                        <img :src="largeImg" alt="Large Event Image" class="w-full h-auto rounded-lg" />
-                    </div>
-                </div>
-            </Transition>
+    <section v-if="!showOverview" aria-labelledby="event-gallery-heading">
+      <div v-if="loadingImages" class="py-12 text-center text-muted-foreground" role="status">Loading photos…</div>
+      <template v-else-if="selectedEvent">
+        <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p class="text-sm font-bold uppercase tracking-widest text-primary">
+              {{ selectedEvent.event.season ? seasonLabel(selectedEvent.event.season) : "Uncategorised" }}
+            </p>
+            <h2 id="event-gallery-heading" class="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">{{ selectedEvent.event.name }}</h2>
+            <time :datetime="selectedEvent.event.eventDate" class="mt-2 block text-muted-foreground">{{ selectedEvent.event.eventDate }}</time>
+          </div>
+          <button
+            type="button"
+            class="rounded-lg border border-border px-4 py-2 text-sm font-bold transition hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            @click="reset"
+          >
+            Back to events
+          </button>
         </div>
+
+        <div v-if="visibleImages.length" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <button
+            v-for="image in visibleImages"
+            :key="image.id"
+            type="button"
+            class="group overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition hover:-translate-y-1 hover:border-primary/60 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            :aria-label="`View ${selectedEvent.event.name} photo${image.isCover ? ' (cover)' : ''}`"
+            @click="image.url && showLargeImage(image.url)"
+          >
+            <img
+              :src="image.url || undefined"
+              :alt="`${selectedEvent.event.name} photo${image.isCover ? ' (cover)' : ''}`"
+              class="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-105"
+              loading="lazy"
+            />
+          </button>
+        </div>
+        <p v-else class="rounded-2xl border border-dashed border-border p-10 text-center text-muted-foreground">No photos have been uploaded for this event yet.</p>
+      </template>
     </section>
+
+    <div
+      v-if="largeImage"
+      v-on-click-outside="() => largeImage = null"
+      tabindex="-1"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Expanded event photo"
+      @keydown.esc="largeImage = null"
+    >
+      <div class="relative max-h-full max-w-5xl">
+        <button
+          type="button"
+          class="absolute right-3 top-3 rounded-full bg-black/70 px-3 py-1 text-2xl leading-none text-white transition hover:bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          aria-label="Close expanded photo"
+          @click="largeImage = null"
+        >
+          <span aria-hidden="true">&times;</span>
+        </button>
+        <img :src="largeImage" alt="Expanded event photo" class="max-h-[90vh] max-w-full rounded-xl object-contain" />
+      </div>
+    </div>
+  </main>
 </template>

@@ -73,6 +73,12 @@
               <input id="event-date" v-model="eventDate" type="date" required
                 class="w-full rounded-lg border bg-background px-3 py-2" />
             </div>
+            <div>
+              <label for="event-season" class="mb-2 block text-sm font-bold">Season</label>
+              <select id="event-season" v-model="eventSeason" required class="w-full rounded-lg border bg-background px-3 py-2">
+                <option v-for="season in seasons" :key="season" :value="season">{{ seasonLabel(season) }}</option>
+              </select>
+            </div>
             <button type="submit" :disabled="creating"
               class="rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground disabled:opacity-50">
               {{ creating ? "Creating…" : "Create event" }}
@@ -97,6 +103,19 @@
                   event.eventDate }}</option>
               </select>
             </div>
+            <div v-if="selectedSlug">
+              <label for="event-season-update" class="mb-2 block text-sm font-bold">Season tag</label>
+              <div class="flex gap-2">
+                <select id="event-season-update" v-model="selectedEventSeason" class="min-w-0 flex-1 rounded-lg border bg-background px-3 py-2">
+                  <option value="">Select season</option>
+                  <option v-for="season in seasons" :key="season" :value="season">{{ seasonLabel(season) }}</option>
+                </select>
+                <button type="button" :disabled="!selectedEventSeason || updatingSeason" class="rounded-lg border border-primary px-3 py-2 text-sm font-bold text-primary disabled:opacity-50" @click="updateSeason">
+                  {{ updatingSeason ? "Saving…" : "Save" }}
+                </button>
+              </div>
+            </div>
+
             <div>
               <label for="images" class="mb-2 block text-sm font-bold">Images</label>
               <input id="images" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif"
@@ -139,7 +158,9 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
-type EventSummary = { name: string; slug: string; eventDate: string; coverUrl: string | null };
+type Season = "winter" | "spring" | "summer" | "autumn";
+const seasons: Season[] = ["winter", "spring", "summer", "autumn"];
+type EventSummary = { name: string; slug: string; eventDate: string; season: Season | null; coverUrl: string | null };
 type EventDetail = { event: Omit<EventSummary, "coverUrl">; images: { id: string; url: string | null; isCover: boolean }[] };
 type UploadStatus = { name: string; state: "pending" | "uploading" | "uploaded" | "failed"; message?: string };
 
@@ -149,12 +170,15 @@ const isValidApiKey = ref(false);
 const validating = ref(false);
 const eventName = ref("");
 const eventDate = ref("");
+const eventSeason = ref<Season>("winter");
 const events = ref<EventSummary[]>([]);
 const selectedSlug = ref("");
 const selectedEvent = ref<EventDetail | null>(null);
+const selectedEventSeason = ref<Season | "">("");
 const files = ref<File[]>([]);
 const coverFileIndex = ref(0);
 const loadingEvents = ref(false);
+const updatingSeason = ref(false);
 const creating = ref(false);
 const uploading = ref(false);
 const error = ref("");
@@ -162,6 +186,9 @@ const notice = ref("");
 const uploadStatuses = ref<UploadStatus[]>([]);
 
 const selectedEventName = computed(() => selectedEvent.value?.event.name || "No event selected");
+function seasonLabel(season: Season) {
+  return season.charAt(0).toUpperCase() + season.slice(1);
+}
 
 function endpoint(path: string) {
   return `${apiUrl.value.replace(/\/$/, "")}${path}`;
@@ -200,6 +227,7 @@ async function loadEvents() {
     if (selectedSlug.value && !events.value.some((event) => event.slug === selectedSlug.value)) {
       selectedSlug.value = "";
       selectedEvent.value = null;
+      selectedEventSeason.value = "";
     }
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : "Unable to load events.";
@@ -210,13 +238,33 @@ async function loadEvents() {
 
 async function loadSelectedEvent() {
   selectedEvent.value = null;
-  if (!selectedSlug.value) return;
+  selectedEventSeason.value = "";
   error.value = "";
   try {
     const response = await request(`/api/events/${encodeURIComponent(selectedSlug.value)}`);
     selectedEvent.value = await response.json() as EventDetail;
+    selectedEventSeason.value = selectedEvent.value.event.season || "";
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : "Unable to load event.";
+  }
+}
+async function updateSeason() {
+  if (!selectedSlug.value || !selectedEventSeason.value) return;
+  error.value = "";
+  notice.value = "";
+  updatingSeason.value = true;
+  try {
+    await request(`/api/events/${encodeURIComponent(selectedSlug.value)}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", authorization: `Bearer ${apiKey.value}` },
+      body: JSON.stringify({ season: selectedEventSeason.value }),
+    });
+    await loadEvents();
+    notice.value = "Season tag saved.";
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : "Unable to save season tag.";
+  } finally {
+    updatingSeason.value = false;
   }
 }
 
@@ -228,11 +276,12 @@ async function createEvent() {
     const response = await request("/api/events", {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${apiKey.value}` },
-      body: JSON.stringify({ name: eventName.value, eventDate: eventDate.value }),
+      body: JSON.stringify({ name: eventName.value, eventDate: eventDate.value, season: eventSeason.value }),
     });
     const body = await response.json() as { event: EventSummary };
     eventName.value = "";
     eventDate.value = "";
+    eventSeason.value = "winter";
     selectedSlug.value = body.event.slug;
     await loadEvents();
     await loadSelectedEvent();

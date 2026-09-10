@@ -1,3 +1,11 @@
+import dotenv from "dotenv";
+import { fileURLToPath } from "node:url";
+
+dotenv.config({
+  path: fileURLToPath(new URL("./.env", import.meta.url)),
+  quiet: true,
+});
+
 export const MAX_BODY_SIZE = 16 * 1024;
 export const MAX_GAME_NAME_LENGTH = 120;
 export const MAX_DESCRIPTION_LENGTH = 1_000;
@@ -13,6 +21,7 @@ export const ALLOWED_IMAGE_TYPES = new Set([
 ]);
 export const MAX_EVENT_NAME_LENGTH = 120;
 export const EVENT_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+export const EVENT_SEASONS = ["winter", "spring", "summer", "autumn"];
 export const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 30);
 export const RATE_LIMIT_WINDOW_MS = Number(
   process.env.RATE_LIMIT_WINDOW_MS || 60_000,

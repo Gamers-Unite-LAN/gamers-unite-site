@@ -5,11 +5,21 @@ import {
   ALLOWED_IMAGE_TYPES,
   cleanString,
   EVENT_DATE_PATTERN,
+  EVENT_SEASONS,
   isAuthorizedUploader,
   MAX_EVENT_NAME_LENGTH,
   MAX_IMAGE_SIZE,
   slugify,
 } from "../utils.js";
+
+function validateSeason(value) {
+  const season = cleanString(value, "season", 20, true);
+  if (season.error) return season;
+  if (!EVENT_SEASONS.includes(season.value)) {
+    return { error: `season must be one of: ${EVENT_SEASONS.join(", ")}.` };
+  }
+  return season;
+}
 
 export function validateEvent(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
@@ -25,26 +35,31 @@ export function validateEvent(input) {
     return { error: "eventDate must be in YYYY-MM-DD format." };
   }
 
+  const season = validateSeason(input.season);
+  if (season.error) return season;
+
   const slugInput = cleanString(input.slug, "slug", 80);
   if (slugInput.error) return slugInput;
   const slug = slugInput.value ? slugify(slugInput.value) : slugify(name.value);
   if (!slug) return { error: "Could not derive a valid slug from name." };
 
-  return { value: { name: name.value, eventDate: eventDate.value, slug } };
+  return { value: { name: name.value, eventDate: eventDate.value, season: season.value, slug } };
 }
 
 export default function registerEvents(app, { db, storage }) {
   const insertEvent = db.prepare(
-    `INSERT INTO events (name, slug, event_date) VALUES (?, ?, ?)`,
+    `INSERT INTO events (name, slug, event_date, season) VALUES (?, ?, ?, ?)`,
   );
   const listEvents = db.prepare(`
-    SELECT e.id, e.name, e.slug, e.event_date AS eventDate, i.storage_key AS coverStorageKey
+    SELECT e.id, e.name, e.slug, e.event_date AS eventDate, e.season,
+      i.storage_key AS coverStorageKey
     FROM events e
     LEFT JOIN images i ON i.id = e.cover_image_id
     ORDER BY e.event_date DESC, e.id DESC
   `);
   const findEventBySlug = db.prepare(`
-    SELECT id, name, slug, event_date AS eventDate, cover_image_id AS coverImageId
+    SELECT id, name, slug, event_date AS eventDate, season,
+      cover_image_id AS coverImageId
     FROM events WHERE slug = ?
   `);
   const deleteEventById = db.prepare(`DELETE FROM events WHERE id = ?`);
@@ -66,6 +81,7 @@ export default function registerEvents(app, { db, storage }) {
   const setEventCover = db.prepare(
     `UPDATE events SET cover_image_id = ? WHERE id = ?`,
   );
+  const updateEventSeason = db.prepare(`UPDATE events SET season = ? WHERE id = ?`);
 
   function uniqueSlug(baseSlug) {
     if (!findEventBySlug.get(baseSlug)) return baseSlug;
@@ -83,6 +99,7 @@ export default function registerEvents(app, { db, storage }) {
         name: row.name,
         slug: row.slug,
         eventDate: row.eventDate,
+        season: row.season,
         coverUrl:
           row.coverStorageKey && storage
             ? storage.publicUrl(row.coverStorageKey)
@@ -114,6 +131,7 @@ export default function registerEvents(app, { db, storage }) {
           validation.value.name,
           slug,
           validation.value.eventDate,
+          validation.value.season,
         );
         logger.info(`Event created: "${validation.value.name}" (slug: ${slug}, id: ${result.lastInsertRowid})`);
         res.status(201).json({
@@ -122,12 +140,43 @@ export default function registerEvents(app, { db, storage }) {
             name: validation.value.name,
             slug,
             eventDate: validation.value.eventDate,
+            season: validation.value.season,
           },
         });
       } catch (error) {
         logger.error("Failed to insert event into database", error);
         res.status(500).json({ error: "Unable to create event." });
       }
+    });
+  });
+  app.patch("/api/events/:slug", (req, res) => {
+    if (!isAuthorizedUploader(req)) {
+      res.status(401).json({ error: "Missing or invalid upload credentials." });
+      return;
+    }
+
+    requireJson(req, res, () => {
+      const event = findEventBySlug.get(req.params.slug);
+      if (!event) {
+        res.status(404).json({ error: "Event not found." });
+        return;
+      }
+
+      const validation = validateSeason(req.body?.season);
+      if (validation.error) {
+        res.status(400).json({ error: validation.error });
+        return;
+      }
+
+      updateEventSeason.run(validation.value, event.id);
+      res.json({
+        event: {
+          name: event.name,
+          slug: event.slug,
+          eventDate: event.eventDate,
+          season: validation.value,
+        },
+      });
     });
   });
 
@@ -153,6 +202,7 @@ export default function registerEvents(app, { db, storage }) {
         name: event.name,
         slug: event.slug,
         eventDate: event.eventDate,
+        season: event.season,
       },
       images,
     });

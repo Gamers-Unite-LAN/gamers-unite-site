@@ -31,11 +31,16 @@ export function createDatabase(databasePath = process.env.DATABASE_PATH || defau
       name TEXT NOT NULL,
       slug TEXT NOT NULL UNIQUE COLLATE NOCASE,
       event_date TEXT NOT NULL,
+      season TEXT,
       cover_image_id TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (cover_image_id) REFERENCES images (id) ON DELETE SET NULL
     )
   `);
+  const eventColumns = db.prepare("PRAGMA table_info(events)").all();
+  if (!eventColumns.some(({ name }) => name === "season")) {
+    db.exec("ALTER TABLE events ADD COLUMN season TEXT");
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS images (
       id TEXT PRIMARY KEY,

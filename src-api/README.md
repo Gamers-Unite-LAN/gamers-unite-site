@@ -59,8 +59,13 @@ curl http://localhost:3000/api/events
 curl -X POST http://localhost:3000/api/events \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer <UPLOAD_API_KEY>' \
-  -d '{"name":"Winter LAN 2026","eventDate":"2026-01-17"}'
-# slug is derived from name ("winter-lan-2026") unless you pass one explicitly
+  -d '{"name":"Winter LAN 2026","eventDate":"2026-01-17","season":"winter"}'
+
+# Update the season tag on an existing event
+curl -X PATCH http://localhost:3000/api/events/winter-lan-2026 \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <UPLOAD_API_KEY>' \
+  -d '{"season":"winter"}'
 
 # Get one event + its images (used when a gallery tile is clicked)
 curl http://localhost:3000/api/events/winter-lan-2026
@@ -81,7 +86,7 @@ curl -X DELETE http://localhost:3000/api/events/winter-lan-2026 \
   -H 'Authorization: Bearer <UPLOAD_API_KEY>'
 ```
 
-`GET /api/events` and `GET /api/events/:slug` are public. Creating events, uploading images, and deleting either require `Authorization: Bearer <UPLOAD_API_KEY>`. Allowed image types: PNG, JPEG, WebP, GIF. Max upload size is 8MB by default (`MAX_IMAGE_SIZE`, in bytes). If storage env vars aren't set, image upload routes return `503`; event/game-recommendation routes keep working normally.
+`GET /api/events` and `GET /api/events/:slug` are public. Creating and updating events, uploading images, and deleting either require `Authorization: Bearer <UPLOAD_API_KEY>`. Allowed image types: PNG, JPEG, WebP, GIF. Max upload size is 8MB by default (`MAX_IMAGE_SIZE`, in bytes). If storage env vars aren't set, image upload routes return `503`; event/game-recommendation routes keep working normally.
 
 ### Environment variables
 
