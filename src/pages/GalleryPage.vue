@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { vOnClickOutside } from "@vueuse/components";
 import EventColumn from "@/components/Gallery/EventTileColumn.vue";
 
 type Season = "winter" | "spring" | "summer" | "autumn";
@@ -100,7 +99,7 @@ onMounted(loadEvents);
 </script>
 
 <template>
-  <main class="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+  <main class="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8" :class="{ 'pb-28': !showOverview }">
     <header class="mx-auto mb-12 max-w-3xl text-center">
       <h1 class="text-5xl font-extrabold tracking-tight sm:text-6xl">Gallery</h1>
       <p class="mt-5 text-lg leading-8 text-muted-foreground">Look back at the LANs, season by season.</p>
@@ -124,21 +123,12 @@ onMounted(loadEvents);
     <section v-if="!showOverview" aria-labelledby="event-gallery-heading">
       <div v-if="loadingImages" class="py-12 text-center text-muted-foreground" role="status">Loading photos…</div>
       <template v-else-if="selectedEvent">
-        <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p class="text-sm font-bold uppercase tracking-widest text-primary">
-              {{ selectedEvent.event.season ? seasonLabel(selectedEvent.event.season) : "Uncategorised" }}
-            </p>
-            <h2 id="event-gallery-heading" class="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">{{ selectedEvent.event.name }}</h2>
-            <time :datetime="selectedEvent.event.eventDate" class="mt-2 block text-muted-foreground">{{ selectedEvent.event.eventDate }}</time>
-          </div>
-          <button
-            type="button"
-            class="rounded-lg border border-border px-4 py-2 text-sm font-bold transition hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            @click="reset"
-          >
-            Back to events
-          </button>
+        <div class="mb-8">
+          <p class="text-sm font-bold uppercase tracking-widest text-primary">
+            {{ selectedEvent.event.season ? seasonLabel(selectedEvent.event.season) : "Uncategorised" }}
+          </p>
+          <h2 id="event-gallery-heading" class="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">{{ selectedEvent.event.name }}</h2>
+          <time :datetime="selectedEvent.event.eventDate" class="mt-2 block text-muted-foreground">{{ selectedEvent.event.eventDate }}</time>
         </div>
 
         <div v-if="visibleImages.length" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -162,13 +152,26 @@ onMounted(loadEvents);
       </template>
     </section>
 
+    <div v-if="!showOverview" class="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 py-3 shadow-lg backdrop-blur-sm">
+      <div class="mx-auto max-w-7xl">
+        <button
+          type="button"
+          class="w-full rounded-xl bg-primary px-6 py-3 text-base font-bold text-primary-foreground transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          @click="reset"
+        >
+          Back to events
+        </button>
+      </div>
+    </div>
+
     <div
       v-if="largeImage"
-      v-on-click-outside="() => largeImage = null"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
       tabindex="-1"
       role="dialog"
       aria-modal="true"
       aria-label="Expanded event photo"
+      @click.self="largeImage = null"
       @keydown.esc="largeImage = null"
     >
       <div class="relative max-h-full max-w-5xl">
