@@ -1,5 +1,9 @@
 import { requireImageBody, requireJson } from "../middleware.js";
-import { generateImageId, isValidPathSegment, keyForImage } from "../storage.js";
+import {
+  generateImageId,
+  isValidPathSegment,
+  keyForImage,
+} from "../storage.js";
 import { logger } from "../logger.js";
 import {
   ALLOWED_IMAGE_TYPES,
@@ -43,7 +47,14 @@ export function validateEvent(input) {
   const slug = slugInput.value ? slugify(slugInput.value) : slugify(name.value);
   if (!slug) return { error: "Could not derive a valid slug from name." };
 
-  return { value: { name: name.value, eventDate: eventDate.value, season: season.value, slug } };
+  return {
+    value: {
+      name: name.value,
+      eventDate: eventDate.value,
+      season: season.value,
+      slug,
+    },
+  };
 }
 
 export default function registerEvents(app, { db, storage }) {
@@ -81,7 +92,9 @@ export default function registerEvents(app, { db, storage }) {
   const setEventCover = db.prepare(
     `UPDATE events SET cover_image_id = ? WHERE id = ?`,
   );
-  const updateEventSeason = db.prepare(`UPDATE events SET season = ? WHERE id = ?`);
+  const updateEventSeason = db.prepare(
+    `UPDATE events SET season = ? WHERE id = ?`,
+  );
 
   function uniqueSlug(baseSlug) {
     if (!findEventBySlug.get(baseSlug)) return baseSlug;
@@ -92,7 +105,7 @@ export default function registerEvents(app, { db, storage }) {
     throw new Error("Could not generate a unique slug.");
   }
 
-  app.get("/api/events", (req, res) => {
+  app.get("/events", (req, res) => {
     const rows = listEvents.all();
     res.json({
       events: rows.map((row) => ({
@@ -108,9 +121,11 @@ export default function registerEvents(app, { db, storage }) {
     });
   });
 
-  app.post("/api/events", (req, res) => {
+  app.post("/events", (req, res) => {
     if (!isAuthorizedUploader(req)) {
-      logger.warn("Unauthorized attempt to create event", { ip: req.socket.remoteAddress });
+      logger.warn("Unauthorized attempt to create event", {
+        ip: req.socket.remoteAddress,
+      });
       res.status(401).json({
         error: "Missing or invalid upload credentials.",
       });
@@ -133,7 +148,9 @@ export default function registerEvents(app, { db, storage }) {
           validation.value.eventDate,
           validation.value.season,
         );
-        logger.info(`Event created: "${validation.value.name}" (slug: ${slug}, id: ${result.lastInsertRowid})`);
+        logger.info(
+          `Event created: "${validation.value.name}" (slug: ${slug}, id: ${result.lastInsertRowid})`,
+        );
         res.status(201).json({
           event: {
             id: result.lastInsertRowid,
@@ -149,7 +166,7 @@ export default function registerEvents(app, { db, storage }) {
       }
     });
   });
-  app.patch("/api/events/:slug", (req, res) => {
+  app.patch("/events/:slug", (req, res) => {
     if (!isAuthorizedUploader(req)) {
       res.status(401).json({ error: "Missing or invalid upload credentials." });
       return;
@@ -180,7 +197,7 @@ export default function registerEvents(app, { db, storage }) {
     });
   });
 
-  app.get("/api/events/:slug", (req, res) => {
+  app.get("/events/:slug", (req, res) => {
     const event = findEventBySlug.get(req.params.slug);
     if (!event) {
       logger.warn(`Event lookup not found: ${req.params.slug}`);
@@ -208,7 +225,7 @@ export default function registerEvents(app, { db, storage }) {
     });
   });
 
-  app.post("/api/events/:slug/images", (req, res) => {
+  app.post("/events/:slug/images", (req, res) => {
     if (!storage) {
       logger.error("Image upload rejected: storage is not configured");
       res.status(503).json({
@@ -218,7 +235,10 @@ export default function registerEvents(app, { db, storage }) {
     }
 
     if (!isAuthorizedUploader(req)) {
-      logger.warn("Unauthorized attempt to upload image", { ip: req.socket.remoteAddress, slug: req.params.slug });
+      logger.warn("Unauthorized attempt to upload image", {
+        ip: req.socket.remoteAddress,
+        slug: req.params.slug,
+      });
       res.status(401).json({
         error: "Missing or invalid upload credentials.",
       });
@@ -227,7 +247,9 @@ export default function registerEvents(app, { db, storage }) {
 
     const event = findEventBySlug.get(req.params.slug);
     if (!event) {
-      logger.warn(`Image upload rejected: event "${req.params.slug}" not found`);
+      logger.warn(
+        `Image upload rejected: event "${req.params.slug}" not found`,
+      );
       res.status(404).json({ error: "Event not found." });
       return;
     }
@@ -237,7 +259,9 @@ export default function registerEvents(app, { db, storage }) {
       .trim()
       .toLowerCase();
     if (!ALLOWED_IMAGE_TYPES.has(contentType)) {
-      logger.warn(`Disallowed image Content-Type: ${contentType}`, { slug: req.params.slug });
+      logger.warn(`Disallowed image Content-Type: ${contentType}`, {
+        slug: req.params.slug,
+      });
       res.status(400).json({
         error: `Content-Type must be one of: ${[...ALLOWED_IMAGE_TYPES].join(", ")}.`,
       });
@@ -247,7 +271,9 @@ export default function registerEvents(app, { db, storage }) {
     requireImageBody(req, res, async () => {
       const body = req.body;
       if (!Buffer.isBuffer(body) || body.length === 0) {
-        logger.warn("Image upload payload empty or invalid buffer", { slug: req.params.slug });
+        logger.warn("Image upload payload empty or invalid buffer", {
+          slug: req.params.slug,
+        });
         res.status(413).json({
           error: `Request body must be between 1 byte and ${MAX_IMAGE_SIZE} bytes.`,
         });
@@ -260,18 +286,15 @@ export default function registerEvents(app, { db, storage }) {
       const storageKey = keyForImage(event.slug, id);
 
       try {
-        const imageUrl = await storage.putImage(
-          storageKey,
-          body,
-          contentType,
-        );
+        const imageUrl = await storage.putImage(storageKey, body, contentType);
         insertImage.run(id, event.id, storageKey, contentType, body.length);
 
-        const makeCover =
-          req.query.cover === "true" || !event.coverImageId;
+        const makeCover = req.query.cover === "true" || !event.coverImageId;
         if (makeCover) setEventCover.run(id, event.id);
 
-        logger.info(`Uploaded image ${id} for event "${event.slug}" (${body.length} bytes, cover: ${makeCover})`);
+        logger.info(
+          `Uploaded image ${id} for event "${event.slug}" (${body.length} bytes, cover: ${makeCover})`,
+        );
         res.status(201).json({
           image: { id, url: imageUrl, isCover: makeCover },
         });
@@ -282,7 +305,7 @@ export default function registerEvents(app, { db, storage }) {
     });
   });
 
-  app.delete("/api/images/:id", async (req, res) => {
+  app.delete("/images/:id", async (req, res) => {
     if (!storage) {
       logger.error("Image deletion rejected: storage is not configured");
       res.status(503).json({ error: "Image storage is not configured." });
@@ -290,7 +313,10 @@ export default function registerEvents(app, { db, storage }) {
     }
 
     if (!isAuthorizedUploader(req)) {
-      logger.warn("Unauthorized attempt to delete image", { ip: req.socket.remoteAddress, imageId: req.params.id });
+      logger.warn("Unauthorized attempt to delete image", {
+        ip: req.socket.remoteAddress,
+        imageId: req.params.id,
+      });
       res.status(401).json({
         error: "Missing or invalid upload credentials.",
       });
@@ -317,14 +343,20 @@ export default function registerEvents(app, { db, storage }) {
       logger.info(`Deleted image ${id} (${image.storageKey})`);
       res.status(204).end();
     } catch (error) {
-      logger.error(`Failed to delete image ${image.storageKey} from storage`, error);
+      logger.error(
+        `Failed to delete image ${image.storageKey} from storage`,
+        error,
+      );
       res.status(502).json({ error: "Unable to delete image." });
     }
   });
 
-  app.delete("/api/events/:slug", async (req, res) => {
+  app.delete("/events/:slug", async (req, res) => {
     if (!isAuthorizedUploader(req)) {
-      logger.warn("Unauthorized attempt to delete event", { ip: req.socket.remoteAddress, slug: req.params.slug });
+      logger.warn("Unauthorized attempt to delete event", {
+        ip: req.socket.remoteAddress,
+        slug: req.params.slug,
+      });
       res.status(401).json({
         error: "Missing or invalid upload credentials.",
       });
@@ -347,10 +379,15 @@ export default function registerEvents(app, { db, storage }) {
         }
       }
       deleteEventById.run(event.id);
-      logger.info(`Deleted event "${slug}" and cascaded ${images.length} image(s)`);
+      logger.info(
+        `Deleted event "${slug}" and cascaded ${images.length} image(s)`,
+      );
       res.status(204).end();
     } catch (error) {
-      logger.error(`Failed to cascade delete event "${slug}" images or row`, error);
+      logger.error(
+        `Failed to cascade delete event "${slug}" images or row`,
+        error,
+      );
       res.status(502).json({ error: "Unable to delete event." });
     }
   });

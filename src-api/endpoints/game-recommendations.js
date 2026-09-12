@@ -1,6 +1,11 @@
 import { requireJson } from "../middleware.js";
 import { logger } from "../logger.js";
-import { cleanString, MAX_DESCRIPTION_LENGTH, MAX_GAME_NAME_LENGTH, MAX_RECOMMENDER_LENGTH } from "../utils.js";
+import {
+  cleanString,
+  MAX_DESCRIPTION_LENGTH,
+  MAX_GAME_NAME_LENGTH,
+  MAX_RECOMMENDER_LENGTH,
+} from "../utils.js";
 
 export function validateGameRecommendation(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
@@ -54,24 +59,31 @@ export default function registerGameRecommendations(app, { db, rateLimit }) {
     WHERE id = ?
   `);
 
-  app.get("/api/game-recommendations", (req, res) => {
+  app.get("/game-recommendations", (req, res) => {
     res.json({ gameRecommendations: listRecommendations.all() });
   });
 
-  app.post("/api/game-recommendations", (req, res) => {
+  app.post("/game-recommendations", (req, res) => {
     const client = req.socket.remoteAddress || "unknown";
     const limit = rateLimit(client);
     if (!limit.allowed) {
-      logger.warn(`Rate limit exceeded for game recommendation from ${client}`, { retryAfter: limit.retryAfter });
+      logger.warn(
+        `Rate limit exceeded for game recommendation from ${client}`,
+        { retryAfter: limit.retryAfter },
+      );
       res.set("retry-after", String(limit.retryAfter));
-      res.status(429).json({ error: "Too many recommendations. Try again shortly." });
+      res
+        .status(429)
+        .json({ error: "Too many recommendations. Try again shortly." });
       return;
     }
 
     requireJson(req, res, () => {
       const validation = validateGameRecommendation(req.body);
       if (validation.error) {
-        logger.warn(`Invalid game recommendation body: ${validation.error}`, { ip: client });
+        logger.warn(`Invalid game recommendation body: ${validation.error}`, {
+          ip: client,
+        });
         res.status(400).json({ error: validation.error });
         return;
       }
@@ -82,13 +94,17 @@ export default function registerGameRecommendations(app, { db, rateLimit }) {
           validation.value.description,
           validation.value.recommendedBy,
         );
-        logger.info(`Added game recommendation: "${validation.value.gameName}" (id: ${result.lastInsertRowid})`);
+        logger.info(
+          `Added game recommendation: "${validation.value.gameName}" (id: ${result.lastInsertRowid})`,
+        );
         res.status(201).json({
           gameRecommendation: findRecommendation.get(result.lastInsertRowid),
         });
       } catch (error) {
         if (error.code === "ERR_SQLITE_ERROR" && error.errcode === 2067) {
-          logger.warn(`Duplicate game recommendation rejected: "${validation.value.gameName}"`);
+          logger.warn(
+            `Duplicate game recommendation rejected: "${validation.value.gameName}"`,
+          );
           res.status(409).json({
             error: "This game has already been recommended.",
           });

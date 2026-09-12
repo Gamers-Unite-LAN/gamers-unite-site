@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createDatabase } from "./db.js";
-import { createApiServer, createRateLimiter, getCorsHeaders, validateEvent, validateGameRecommendation } from "./server.js";
+import {
+  createApiServer,
+  createRateLimiter,
+  getCorsHeaders,
+  validateEvent,
+  validateGameRecommendation,
+} from "./server.js";
 
 function createFakeStorage() {
   const objects = new Map();
@@ -20,7 +26,10 @@ function createFakeStorage() {
   };
 }
 
-async function withServer(fn, { storage = createFakeStorage(), uploadKey = "test-secret" } = {}) {
+async function withServer(
+  fn,
+  { storage = createFakeStorage(), uploadKey = "test-secret" } = {},
+) {
   const db = createDatabase(":memory:");
   const previousKey = process.env.UPLOAD_API_KEY;
   process.env.UPLOAD_API_KEY = uploadKey;
@@ -42,29 +51,48 @@ function authed(headers = {}) {
 }
 
 test("validates and trims game recommendations", () => {
-  assert.deepEqual(validateGameRecommendation({
-    gameName: "  Team Fortress 2 ",
-    description: "  Great LAN game.  ",
-    recommendedBy: "  Alex  ",
-  }), {
-    value: {
-      gameName: "Team Fortress 2",
-      description: "Great LAN game.",
-      recommendedBy: "Alex",
+  assert.deepEqual(
+    validateGameRecommendation({
+      gameName: "  Team Fortress 2 ",
+      description: "  Great LAN game.  ",
+      recommendedBy: "  Alex  ",
+    }),
+    {
+      value: {
+        gameName: "Team Fortress 2",
+        description: "Great LAN game.",
+        recommendedBy: "Alex",
+      },
     },
-  });
+  );
 });
 
 test("rejects invalid game recommendations", () => {
-  assert.deepEqual(validateGameRecommendation({ gameName: "   " }), { error: "gameName is required." });
-  assert.deepEqual(validateGameRecommendation({ gameName: 42 }), { error: "gameName must be a string." });
-  assert.deepEqual(validateGameRecommendation([]), { error: "Request body must be a JSON object." });
+  assert.deepEqual(validateGameRecommendation({ gameName: "   " }), {
+    error: "gameName is required.",
+  });
+  assert.deepEqual(validateGameRecommendation({ gameName: 42 }), {
+    error: "gameName must be a string.",
+  });
+  assert.deepEqual(validateGameRecommendation([]), {
+    error: "Request body must be a JSON object.",
+  });
 });
 
 test("allows only production origin outside development", () => {
-  assert.equal(getCorsHeaders("https://gamersunitelan.com", false)["access-control-allow-origin"], "https://gamersunitelan.com");
+  assert.equal(
+    getCorsHeaders("https://gamersunitelan.com", false)[
+      "access-control-allow-origin"
+    ],
+    "https://gamersunitelan.com",
+  );
   assert.deepEqual(getCorsHeaders("https://evil.example", false), {});
-  assert.equal(getCorsHeaders("http://localhost:5173", true)["access-control-allow-origin"], "http://localhost:5173");
+  assert.equal(
+    getCorsHeaders("http://localhost:5173", true)[
+      "access-control-allow-origin"
+    ],
+    "http://localhost:5173",
+  );
 });
 
 test("limits recommendations per client within its window", () => {
@@ -82,18 +110,24 @@ test("stores, lists, and rejects duplicate recommendations", async () => {
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
 
   try {
-    const create = await fetch(`${baseUrl}/api/game-recommendations`, {
+    const create = await fetch(`${baseUrl}/game-recommendations`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ gameName: "Quake 3", description: "Fast LAN chaos" }),
+      body: JSON.stringify({
+        gameName: "Quake 3",
+        description: "Fast LAN chaos",
+      }),
     });
     assert.equal(create.status, 201);
     assert.equal((await create.json()).gameRecommendation.gameName, "Quake 3");
 
-    const list = await fetch(`${baseUrl}/api/game-recommendations`);
-    assert.deepEqual((await list.json()).gameRecommendations.map(({ gameName }) => gameName), ["Quake 3"]);
+    const list = await fetch(`${baseUrl}/game-recommendations`);
+    assert.deepEqual(
+      (await list.json()).gameRecommendations.map(({ gameName }) => gameName),
+      ["Quake 3"],
+    );
 
-    const duplicate = await fetch(`${baseUrl}/api/game-recommendations`, {
+    const duplicate = await fetch(`${baseUrl}/game-recommendations`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ gameName: "quake 3" }),
@@ -106,35 +140,72 @@ test("stores, lists, and rejects duplicate recommendations", async () => {
 });
 
 test("validates event seasons and derives a slug from the name", () => {
-  assert.deepEqual(validateEvent({ name: "Winter LAN 2026", eventDate: "2026-01-17", season: "winter" }), {
-    value: { name: "Winter LAN 2026", eventDate: "2026-01-17", season: "winter", slug: "winter-lan-2026" },
-  });
-  assert.deepEqual(validateEvent({ name: "Winter LAN", eventDate: "2026-01-17" }), {
-    error: "season must be a string.",
-  });
-  assert.deepEqual(validateEvent({ name: "Winter LAN", eventDate: "2026-01-17", season: "monsoon" }), {
-    error: "season must be one of: winter, spring, summer, autumn.",
-  });
-  assert.deepEqual(validateEvent({ name: "Winter LAN", eventDate: "17-01-2026", season: "winter" }), {
-    error: "eventDate must be in YYYY-MM-DD format.",
-  });
+  assert.deepEqual(
+    validateEvent({
+      name: "Winter LAN 2026",
+      eventDate: "2026-01-17",
+      season: "winter",
+    }),
+    {
+      value: {
+        name: "Winter LAN 2026",
+        eventDate: "2026-01-17",
+        season: "winter",
+        slug: "winter-lan-2026",
+      },
+    },
+  );
+  assert.deepEqual(
+    validateEvent({ name: "Winter LAN", eventDate: "2026-01-17" }),
+    {
+      error: "season must be a string.",
+    },
+  );
+  assert.deepEqual(
+    validateEvent({
+      name: "Winter LAN",
+      eventDate: "2026-01-17",
+      season: "monsoon",
+    }),
+    {
+      error: "season must be one of: winter, spring, summer, autumn.",
+    },
+  );
+  assert.deepEqual(
+    validateEvent({
+      name: "Winter LAN",
+      eventDate: "17-01-2026",
+      season: "winter",
+    }),
+    {
+      error: "eventDate must be in YYYY-MM-DD format.",
+    },
+  );
 });
 
 test("creates an event and rejects duplicate slugs by disambiguating", async () => {
   await withServer(async ({ baseUrl }) => {
-    const create = await fetch(`${baseUrl}/api/events`, {
+    const create = await fetch(`${baseUrl}/events`, {
       method: "POST",
       headers: authed({ "content-type": "application/json" }),
-      body: JSON.stringify({ name: "Winter LAN", eventDate: "2026-01-17", season: "winter" }),
+      body: JSON.stringify({
+        name: "Winter LAN",
+        eventDate: "2026-01-17",
+        season: "winter",
+      }),
     });
     assert.equal(create.status, 201);
     const { event } = await create.json();
     assert.equal(event.slug, "winter-lan");
 
-    const createAgain = await fetch(`${baseUrl}/api/events`, {
+    const createAgain = await fetch(`${baseUrl}/events`, {
       method: "POST",
       headers: authed({ "content-type": "application/json" }),
-      body: JSON.stringify({ name: "Winter LAN", eventDate: "2027-01-16", season: "winter" }),
+      body: JSON.stringify({
+        name: "Winter LAN",
+        eventDate: "2027-01-16",
+        season: "winter",
+      }),
     });
     assert.equal(createAgain.status, 201);
     assert.equal((await createAgain.json()).event.slug, "winter-lan-2");
@@ -143,14 +214,18 @@ test("creates an event and rejects duplicate slugs by disambiguating", async () 
 
 test("updates the season tag on an existing event", async () => {
   await withServer(async ({ baseUrl }) => {
-    const create = await fetch(`${baseUrl}/api/events`, {
+    const create = await fetch(`${baseUrl}/events`, {
       method: "POST",
       headers: authed({ "content-type": "application/json" }),
-      body: JSON.stringify({ name: "Legacy LAN", eventDate: "2026-08-01", season: "summer" }),
+      body: JSON.stringify({
+        name: "Legacy LAN",
+        eventDate: "2026-08-01",
+        season: "summer",
+      }),
     });
     const { event } = await create.json();
 
-    const update = await fetch(`${baseUrl}/api/events/${event.slug}`, {
+    const update = await fetch(`${baseUrl}/events/${event.slug}`, {
       method: "PATCH",
       headers: authed({ "content-type": "application/json" }),
       body: JSON.stringify({ season: "autumn" }),
@@ -162,7 +237,7 @@ test("updates the season tag on an existing event", async () => {
 
 test("rejects event creation without an upload key", async () => {
   await withServer(async ({ baseUrl }) => {
-    const response = await fetch(`${baseUrl}/api/events`, {
+    const response = await fetch(`${baseUrl}/events`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ name: "Winter LAN", eventDate: "2026-01-17" }),
@@ -173,47 +248,63 @@ test("rejects event creation without an upload key", async () => {
 
 test("uploads images to an event, auto-assigns the first as cover, and lists them", async () => {
   await withServer(async ({ baseUrl, storage }) => {
-    const createEvent = await fetch(`${baseUrl}/api/events`, {
+    const createEvent = await fetch(`${baseUrl}/events`, {
       method: "POST",
       headers: authed({ "content-type": "application/json" }),
-      body: JSON.stringify({ name: "Summer LAN", eventDate: "2026-07-04", season: "summer" }),
+      body: JSON.stringify({
+        name: "Summer LAN",
+        eventDate: "2026-07-04",
+        season: "summer",
+      }),
     });
     const { event } = await createEvent.json();
 
-    const uploadOne = await fetch(`${baseUrl}/api/events/${event.slug}/images?filename=one.png`, {
-      method: "POST",
-      headers: authed({ "content-type": "image/png" }),
-      body: Buffer.from("first-image-bytes"),
-    });
+    const uploadOne = await fetch(
+      `${baseUrl}/events/${event.slug}/images?filename=one.png`,
+      {
+        method: "POST",
+        headers: authed({ "content-type": "image/png" }),
+        body: Buffer.from("first-image-bytes"),
+      },
+    );
     assert.equal(uploadOne.status, 201);
     const first = (await uploadOne.json()).image;
     assert.equal(first.isCover, true);
 
-    const uploadTwo = await fetch(`${baseUrl}/api/events/${event.slug}/images?filename=two.png`, {
-      method: "POST",
-      headers: authed({ "content-type": "image/png" }),
-      body: Buffer.from("second-image-bytes"),
-    });
+    const uploadTwo = await fetch(
+      `${baseUrl}/events/${event.slug}/images?filename=two.png`,
+      {
+        method: "POST",
+        headers: authed({ "content-type": "image/png" }),
+        body: Buffer.from("second-image-bytes"),
+      },
+    );
     const second = (await uploadTwo.json()).image;
     assert.equal(second.isCover, false);
 
-    const eventDetailResponse = await fetch(`${baseUrl}/api/events/${event.slug}`);
+    const eventDetailResponse = await fetch(`${baseUrl}/events/${event.slug}`);
     const { event: eventDetails, images } = await eventDetailResponse.json();
-    assert.deepEqual(images.map((img) => img.id), [first.id, second.id]);
+    assert.deepEqual(
+      images.map((img) => img.id),
+      [first.id, second.id],
+    );
     assert.equal(eventDetails.season, "summer");
     assert.equal(images.find((img) => img.id === first.id).isCover, true);
 
-    const list = await fetch(`${baseUrl}/api/events`);
+    const list = await fetch(`${baseUrl}/events`);
     const { events } = await list.json();
     assert.equal(events[0].season, "summer");
-    assert.equal(events[0].coverUrl, `https://images.example/images/${event.slug}/${first.id}`);
+    assert.equal(
+      events[0].coverUrl,
+      `https://images.example/images/${event.slug}/${first.id}`,
+    );
     assert.equal(storage.objects.size, 2);
   });
 });
 
 test("404s image uploads for an unknown event", async () => {
   await withServer(async ({ baseUrl }) => {
-    const response = await fetch(`${baseUrl}/api/events/does-not-exist/images`, {
+    const response = await fetch(`${baseUrl}/events/does-not-exist/images`, {
       method: "POST",
       headers: authed({ "content-type": "image/png" }),
       body: Buffer.from("bytes"),
@@ -224,14 +315,18 @@ test("404s image uploads for an unknown event", async () => {
 
 test("rejects disallowed content types for image uploads", async () => {
   await withServer(async ({ baseUrl }) => {
-    const createEvent = await fetch(`${baseUrl}/api/events`, {
+    const createEvent = await fetch(`${baseUrl}/events`, {
       method: "POST",
       headers: authed({ "content-type": "application/json" }),
-      body: JSON.stringify({ name: "Autumn LAN", eventDate: "2026-10-10", season: "autumn" }),
+      body: JSON.stringify({
+        name: "Autumn LAN",
+        eventDate: "2026-10-10",
+        season: "autumn",
+      }),
     });
     const { event } = await createEvent.json();
 
-    const response = await fetch(`${baseUrl}/api/events/${event.slug}/images`, {
+    const response = await fetch(`${baseUrl}/events/${event.slug}/images`, {
       method: "POST",
       headers: authed({ "content-type": "application/pdf" }),
       body: Buffer.from("not-an-image"),
@@ -242,28 +337,32 @@ test("rejects disallowed content types for image uploads", async () => {
 
 test("deleting an image removes it from storage and clears cover if needed", async () => {
   await withServer(async ({ baseUrl, storage }) => {
-    const createEvent = await fetch(`${baseUrl}/api/events`, {
+    const createEvent = await fetch(`${baseUrl}/events`, {
       method: "POST",
       headers: authed({ "content-type": "application/json" }),
-      body: JSON.stringify({ name: "Spring LAN", eventDate: "2026-04-12", season: "spring" }),
+      body: JSON.stringify({
+        name: "Spring LAN",
+        eventDate: "2026-04-12",
+        season: "spring",
+      }),
     });
     const { event } = await createEvent.json();
 
-    const upload = await fetch(`${baseUrl}/api/events/${event.slug}/images`, {
+    const upload = await fetch(`${baseUrl}/events/${event.slug}/images`, {
       method: "POST",
       headers: authed({ "content-type": "image/png" }),
       body: Buffer.from("cover-image-bytes"),
     });
     const { image } = await upload.json();
 
-    const remove = await fetch(`${baseUrl}/api/images/${image.id}`, {
+    const remove = await fetch(`${baseUrl}/images/${image.id}`, {
       method: "DELETE",
       headers: authed(),
     });
     assert.equal(remove.status, 204);
     assert.equal(storage.objects.size, 0);
 
-    const eventDetail = await fetch(`${baseUrl}/api/events/${event.slug}`);
+    const eventDetail = await fetch(`${baseUrl}/events/${event.slug}`);
     const { images } = await eventDetail.json();
     assert.deepEqual(images, []);
   });
@@ -271,51 +370,62 @@ test("deleting an image removes it from storage and clears cover if needed", asy
 
 test("deleting an event cascades to its images in both S3 and the DB", async () => {
   await withServer(async ({ baseUrl, storage }) => {
-    const createEvent = await fetch(`${baseUrl}/api/events`, {
+    const createEvent = await fetch(`${baseUrl}/events`, {
       method: "POST",
       headers: authed({ "content-type": "application/json" }),
-      body: JSON.stringify({ name: "Old LAN", eventDate: "2020-01-01", season: "winter" }),
+      body: JSON.stringify({
+        name: "Old LAN",
+        eventDate: "2020-01-01",
+        season: "winter",
+      }),
     });
     const { event } = await createEvent.json();
 
-    await fetch(`${baseUrl}/api/events/${event.slug}/images`, {
+    await fetch(`${baseUrl}/events/${event.slug}/images`, {
       method: "POST",
       headers: authed({ "content-type": "image/png" }),
       body: Buffer.from("one"),
     });
-    await fetch(`${baseUrl}/api/events/${event.slug}/images`, {
+    await fetch(`${baseUrl}/events/${event.slug}/images`, {
       method: "POST",
       headers: authed({ "content-type": "image/png" }),
       body: Buffer.from("two"),
     });
     assert.equal(storage.objects.size, 2);
 
-    const remove = await fetch(`${baseUrl}/api/events/${event.slug}`, {
+    const remove = await fetch(`${baseUrl}/events/${event.slug}`, {
       method: "DELETE",
       headers: authed(),
     });
     assert.equal(remove.status, 204);
     assert.equal(storage.objects.size, 0);
 
-    const gone = await fetch(`${baseUrl}/api/events/${event.slug}`);
+    const gone = await fetch(`${baseUrl}/events/${event.slug}`);
     assert.equal(gone.status, 404);
   });
 });
 
 test("reports 503 for image uploads when storage is unconfigured", async () => {
-  await withServer(async ({ baseUrl }) => {
-    const createEvent = await fetch(`${baseUrl}/api/events`, {
-      method: "POST",
-      headers: authed({ "content-type": "application/json" }),
-      body: JSON.stringify({ name: "No Storage LAN", eventDate: "2026-02-02", season: "winter" }),
-    });
-    const { event } = await createEvent.json();
+  await withServer(
+    async ({ baseUrl }) => {
+      const createEvent = await fetch(`${baseUrl}/events`, {
+        method: "POST",
+        headers: authed({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          name: "No Storage LAN",
+          eventDate: "2026-02-02",
+          season: "winter",
+        }),
+      });
+      const { event } = await createEvent.json();
 
-    const response = await fetch(`${baseUrl}/api/events/${event.slug}/images`, {
-      method: "POST",
-      headers: authed({ "content-type": "image/png" }),
-      body: Buffer.from("bytes"),
-    });
-    assert.equal(response.status, 503);
-  }, { storage: null });
+      const response = await fetch(`${baseUrl}/events/${event.slug}/images`, {
+        method: "POST",
+        headers: authed({ "content-type": "image/png" }),
+        body: Buffer.from("bytes"),
+      });
+      assert.equal(response.status, 503);
+    },
+    { storage: null },
+  );
 });
