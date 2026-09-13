@@ -157,46 +157,19 @@
         <p v-if="loadingEvents" class="rounded-xl border border-dashed p-8 text-center text-muted-foreground" role="status">Loading events…</p>
         <p v-else-if="!events.length" class="rounded-xl border border-dashed p-8 text-center text-muted-foreground">No events have been created yet.</p>
         <div v-else class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          <article v-for="event in events" :key="event.slug" class="overflow-hidden rounded-2xl border bg-card shadow-sm">
-            <div class="flex items-start justify-between gap-4 p-5">
-              <div class="min-w-0">
-                <p class="text-xs font-bold uppercase tracking-wider text-primary">{{ event.season ? seasonLabel(event.season) : "Uncategorised" }}</p>
-                <h3 class="mt-1 truncate text-lg font-bold" :title="event.name">{{ event.name }}</h3>
-                <time :datetime="event.eventDate" class="mt-1 block text-sm text-muted-foreground">{{ event.eventDate }}</time>
-              </div>
-              <button
-                type="button"
-                class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-destructive/40 px-2.5 py-2 text-xs font-bold text-destructive transition hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="deletingEventSlug === event.slug"
-                :aria-label="`Delete ${event.name}`"
-                @click="deleteEvent(event)"
-              >
-                <Trash2 :size="14" aria-hidden="true" />
-                {{ deletingEventSlug === event.slug ? "Deleting…" : "Delete" }}
-              </button>
-            </div>
-
-            <div class="border-t bg-muted/20 p-4">
-              <div v-if="event.images.length" class="flex gap-3 overflow-x-auto pb-1" :aria-label="`${event.images.length} images for ${event.name}`">
-                <div v-for="image in event.images" :key="image.id" class="group relative min-w-28 overflow-hidden rounded-xl border bg-background sm:min-w-32">
-                  <img v-if="image.url" :src="image.url" :alt="`${event.name} image${image.isCover ? ' (cover)' : ''}`" class="aspect-square w-full object-cover" loading="lazy" />
-                  <div v-else class="flex aspect-square items-center justify-center p-3 text-center text-xs text-muted-foreground">Image unavailable</div>
-                  <span v-if="image.isCover" class="absolute left-2 top-2 rounded-md bg-background/90 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">Cover</span>
-                  <button
-                    type="button"
-                    class="absolute right-2 top-2 inline-flex rounded-md bg-black/75 p-1.5 text-white opacity-100 transition hover:bg-destructive sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-50"
-                    :disabled="deletingImageId === image.id"
-                    :aria-label="`Delete image from ${event.name}`"
-                    @click.stop="deleteImage(event, image)"
-                  >
-                    <Trash2 :size="14" aria-hidden="true" />
-                  </button>
-                </div>
-              </div>
-              <p v-else class="py-4 text-center text-sm text-muted-foreground">No images uploaded.</p>
-              <p class="mt-3 text-xs text-muted-foreground">{{ event.images.length }} image{{ event.images.length === 1 ? "" : "s" }}</p>
-            </div>
-          </article>
+        <EventCard
+          v-for="event in events"
+          :key="event.slug"
+          :event="event"
+          :seasons="seasons"
+          :saving="savingEventSlug === event.slug"
+          :saved-revision="lastSavedEventSlug === event.slug ? eventSaveRevision : 0"
+          :deleting="deletingEventSlug === event.slug"
+          :deleting-image-id="deletingImageId"
+          @save="saveEvent"
+          @delete-event="deleteEvent(event)"
+          @delete-image="deleteImage(event, $event)"
+        />
         </div>
       </section>
     </template>
@@ -211,7 +184,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { Trash2 } from "lucide-vue-next";
+import EventCard from "@/components/Admin/EventCard.vue";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 type Season = "winter" | "spring" | "summer" | "autumn";
@@ -220,6 +193,7 @@ type EventSummary = { name: string; slug: string; eventDate: string; season: Sea
 type EventImage = { id: string; url: string | null; isCover: boolean };
 type EventDetail = { event: Omit<EventSummary, "coverUrl">; images: EventImage[] };
 type AdminEvent = EventSummary & { images: EventImage[] };
+type EditableEvent = { slug: string; name: string; eventDate: string; season: Season | "" };
 type UploadStatus = { name: string; state: "pending" | "uploading" | "uploaded" | "failed"; message?: string };
 
 const apiUrl = ref(import.meta.env.DEV ? "" : import.meta.env.VITE_API_URL || "");
@@ -244,6 +218,9 @@ const notice = ref("");
 const uploadStatuses = ref<UploadStatus[]>([]);
 const deletingEventSlug = ref("");
 const deletingImageId = ref("");
+const savingEventSlug = ref("");
+const lastSavedEventSlug = ref("");
+const eventSaveRevision = ref(0);
 
 const selectedEventName = computed(() => selectedEvent.value?.event.name || "No event selected");
 function seasonLabel(season: Season) {
@@ -313,6 +290,32 @@ async function loadSelectedEvent() {
     error.value = caught instanceof Error ? caught.message : "Unable to load event.";
   }
 }
+async function saveEvent(edit: EditableEvent) {
+  error.value = "";
+  notice.value = "";
+  savingEventSlug.value = edit.slug;
+  try {
+    await request(`/api/events/${encodeURIComponent(edit.slug)}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", authorization: `Bearer ${apiKey.value}` },
+      body: JSON.stringify({
+        name: edit.name,
+        eventDate: edit.eventDate,
+        season: edit.season || null,
+      }),
+    });
+    await loadEvents();
+    if (selectedSlug.value === edit.slug) await loadSelectedEvent();
+    lastSavedEventSlug.value = edit.slug;
+    eventSaveRevision.value += 1;
+    notice.value = "Event details saved.";
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : "Unable to save event details.";
+  } finally {
+    savingEventSlug.value = "";
+  }
+}
+
 
 async function deleteImage(event: AdminEvent, image: EventImage) {
   if (!window.confirm(`Delete this image from "${event.name}"? This cannot be undone.`)) return;
@@ -334,8 +337,8 @@ async function deleteImage(event: AdminEvent, image: EventImage) {
   } finally {
     deletingImageId.value = "";
   }
-}
 
+}
 async function deleteEvent(event: AdminEvent) {
   if (!window.confirm(`Delete "${event.name}" and all ${event.images.length} image${event.images.length === 1 ? "" : "s"}? This cannot be undone.`)) return;
   error.value = "";

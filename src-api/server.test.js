@@ -212,7 +212,7 @@ test("creates an event and rejects duplicate slugs by disambiguating", async () 
   });
 });
 
-test("updates the season tag on an existing event", async () => {
+test("updates event name, date, and season", async () => {
   await withServer(async ({ baseUrl }) => {
     const create = await fetch(`${baseUrl}/events`, {
       method: "POST",
@@ -228,10 +228,27 @@ test("updates the season tag on an existing event", async () => {
     const update = await fetch(`${baseUrl}/events/${event.slug}`, {
       method: "PATCH",
       headers: authed({ "content-type": "application/json" }),
-      body: JSON.stringify({ season: "autumn" }),
+      body: JSON.stringify({
+        name: "Renamed LAN",
+        eventDate: "2026-08-02",
+        season: null,
+      }),
     });
     assert.equal(update.status, 200);
-    assert.equal((await update.json()).event.season, "autumn");
+    assert.deepEqual((await update.json()).event, {
+      name: "Renamed LAN",
+      slug: "legacy-lan",
+      eventDate: "2026-08-02",
+      season: null,
+    });
+
+    const detail = await fetch(`${baseUrl}/events/${event.slug}`);
+    assert.deepEqual((await detail.json()).event, {
+      name: "Renamed LAN",
+      slug: "legacy-lan",
+      eventDate: "2026-08-02",
+      season: null,
+    });
   });
 });
 

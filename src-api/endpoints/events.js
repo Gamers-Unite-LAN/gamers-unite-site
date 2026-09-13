@@ -24,6 +24,37 @@ function validateSeason(value) {
   }
   return season;
 }
+function validateEventUpdate(input, current) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return { error: "Request body must be a JSON object." };
+  }
+
+  const name =
+    input.name === undefined
+      ? { value: current.name }
+      : cleanString(input.name, "name", MAX_EVENT_NAME_LENGTH, true);
+  if (name.error) return name;
+
+  const eventDate =
+    input.eventDate === undefined
+      ? { value: current.eventDate }
+      : cleanString(input.eventDate, "eventDate", 10, true);
+  if (eventDate.error) return eventDate;
+  if (!EVENT_DATE_PATTERN.test(eventDate.value)) {
+    return { error: "eventDate must be in YYYY-MM-DD format." };
+  }
+
+  const season =
+    input.season === undefined
+      ? { value: current.season }
+      : input.season === null || input.season === ""
+        ? { value: null }
+        : validateSeason(input.season);
+  if (season.error) return season;
+
+  return { value: { name: name.value, eventDate: eventDate.value, season: season.value } };
+}
+
 
 export function validateEvent(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
@@ -92,8 +123,8 @@ export default function registerEvents(app, { db, storage }) {
   const setEventCover = db.prepare(
     `UPDATE events SET cover_image_id = ? WHERE id = ?`,
   );
-  const updateEventSeason = db.prepare(
-    `UPDATE events SET season = ? WHERE id = ?`,
+  const updateEvent = db.prepare(
+    `UPDATE events SET name = ?, event_date = ?, season = ? WHERE id = ?`,
   );
 
   function uniqueSlug(baseSlug) {
@@ -179,19 +210,24 @@ export default function registerEvents(app, { db, storage }) {
         return;
       }
 
-      const validation = validateSeason(req.body?.season);
+      const validation = validateEventUpdate(req.body, event);
       if (validation.error) {
         res.status(400).json({ error: validation.error });
         return;
       }
 
-      updateEventSeason.run(validation.value, event.id);
+      updateEvent.run(
+        validation.value.name,
+        validation.value.eventDate,
+        validation.value.season,
+        event.id,
+      );
       res.json({
         event: {
-          name: event.name,
+          name: validation.value.name,
           slug: event.slug,
-          eventDate: event.eventDate,
-          season: validation.value,
+          eventDate: validation.value.eventDate,
+          season: validation.value.season,
         },
       });
     });

@@ -39,7 +39,7 @@ export function getCorsHeaders(
   return allowed
     ? {
         "access-control-allow-origin": origin,
-        "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+        "access-control-allow-methods": "GET, POST, PATCH, DELETE, OPTIONS",
         "access-control-allow-headers": "Content-Type, Authorization",
         vary: "Origin",
       }
