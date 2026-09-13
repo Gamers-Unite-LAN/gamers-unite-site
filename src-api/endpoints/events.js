@@ -305,6 +305,35 @@ export default function registerEvents(app, { db, storage }) {
     });
   });
 
+  app.get("/images/:slug/:id", async (req, res) => {
+    if (!storage) {
+      res.status(503).json({ error: "Image storage is not configured." });
+      return;
+    }
+
+    const { slug, id } = req.params;
+    if (!isValidPathSegment(slug) || !isValidPathSegment(id)) {
+      res.status(400).json({ error: "Invalid image path." });
+      return;
+    }
+
+    const key = keyForImage(slug, id);
+    try {
+      const { body, contentType, contentLength } = await storage.getImage(key);
+      res.setHeader("Content-Type", contentType || "application/octet-stream");
+      if (contentLength) res.setHeader("Content-Length", contentLength);
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      body.pipe(res);
+    } catch (error) {
+      if (error.name === "NoSuchKey") {
+        res.status(404).json({ error: "Image not found." });
+        return;
+      }
+      logger.error(`Failed to fetch image ${key} from storage`, error);
+      res.status(502).json({ error: "Unable to fetch image." });
+    }
+  });
+
   app.delete("/images/:id", async (req, res) => {
     if (!storage) {
       logger.error("Image deletion rejected: storage is not configured");

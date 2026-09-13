@@ -26,12 +26,16 @@ export function createStorage({
   forcePathStyle = process.env.S3_FORCE_PATH_STYLE !== "false",
 } = {}) {
   if (!bucket) throw new Error("S3_BUCKET is required.");
-  if (!publicUrlBase) throw new Error("S3_PUBLIC_URL_BASE is required to build image URLs.");
+  if (!publicUrlBase)
+    throw new Error("S3_PUBLIC_URL_BASE is required to build image URLs.");
 
   const client = new S3Client({
     endpoint,
     region,
-    credentials: accessKeyId && secretAccessKey ? { accessKeyId, secretAccessKey } : undefined,
+    credentials:
+      accessKeyId && secretAccessKey
+        ? { accessKeyId, secretAccessKey }
+        : undefined,
     // MinIO and most non-AWS S3-compatible providers need path-style URLs
     // (https://host/bucket/key) rather than virtual-hosted style. AWS itself
     // is fine with either, so this default is safe everywhere.
@@ -44,18 +48,31 @@ export function createStorage({
 
   return {
     async putImage(key, body, contentType) {
-      await client.send(new PutObjectCommand({
-        Bucket: bucket,
-        Key: key,
-        Body: body,
-        ContentType: contentType,
-        CacheControl: "public, max-age=31536000, immutable",
-      }));
+      await client.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: key,
+          Body: body,
+          ContentType: contentType,
+          CacheControl: "public, max-age=31536000, immutable",
+        }),
+      );
       return publicUrl(key);
     },
 
     async deleteImage(key) {
       await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+    },
+
+    async getImage(key) {
+      const result = await client.send(
+        new GetObjectCommand({ Bucket: bucket, Key: key }),
+      );
+      return {
+        body: result.Body, // a Readable stream
+        contentType: result.ContentType,
+        contentLength: result.ContentLength,
+      };
     },
 
     publicUrl,
@@ -67,7 +84,8 @@ export function createStorage({
 // is both the DB primary key for the image row and the last path segment
 // of its S3 key.
 export function generateImageId(originalName) {
-  const extension = SAFE_EXTENSION.exec(originalName || "")?.[0].toLowerCase() || "";
+  const extension =
+    SAFE_EXTENSION.exec(originalName || "")?.[0].toLowerCase() || "";
   return `${randomUUID()}${extension}`;
 }
 
@@ -75,7 +93,13 @@ export function generateImageId(originalName) {
 // build a storage key or a SQL lookup, so something like `../../secrets`
 // can never reach the S3 client or filesystem-shaped assumptions.
 export function isValidPathSegment(value) {
-  return typeof value === "string" && value.length > 0 && value.length <= 200 && !value.includes("/") && !value.includes("..");
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= 200 &&
+    !value.includes("/") &&
+    !value.includes("..")
+  );
 }
 
 export function keyForImage(eventSlug, id) {
