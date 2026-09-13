@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
   DeleteObjectCommand,
   PutObjectCommand,
+  GetObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 
