@@ -23,12 +23,12 @@ export function createStorage({
   region = process.env.S3_REGION || "auto",
   accessKeyId = process.env.S3_ACCESS_KEY_ID,
   secretAccessKey = process.env.S3_SECRET_ACCESS_KEY,
-  publicUrlBase = process.env.S3_PUBLIC_URL_BASE,
+  publicUrlBase = process.env.PUBLIC_ASSET_URL_BASE,
   forcePathStyle = process.env.S3_FORCE_PATH_STYLE !== "false",
 } = {}) {
   if (!bucket) throw new Error("S3_BUCKET is required.");
   if (!publicUrlBase)
-    throw new Error("S3_PUBLIC_URL_BASE is required to build image URLs.");
+    throw new Error("PUBLIC_ASSET_URL_BASE is required to build image URLs.");
 
   const client = new S3Client({
     endpoint,

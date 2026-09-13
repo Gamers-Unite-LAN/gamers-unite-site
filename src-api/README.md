@@ -96,7 +96,7 @@ curl -X DELETE http://localhost:3000/api/events/winter-lan-2026 \
 | `S3_ENDPOINT` | e.g. `https://minio.gamersunitelan.com` (self-hosted) or Hetzner's regional endpoint |
 | `S3_REGION` | Any string is fine for MinIO; use the real region for Hetzner/AWS |
 | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | Credentials for the bucket |
-| `S3_PUBLIC_URL_BASE` | Public base URL images are served from, e.g. `https://images.gamersunitelan.com/gul-images` |
+| `PUBLIC_ASSET_URL_BASE` | Public base URL images are served from, e.g. `https://images.gamersunitelan.com/gul-images` |
 | `S3_FORCE_PATH_STYLE` | Defaults to `true` (required by MinIO and most non-AWS providers). Set to `false` for AWS if you prefer virtual-hosted-style URLs |
 | `UPLOAD_API_KEY` | Shared secret required to create/upload/delete events and images |
 | `MAX_IMAGE_SIZE` | Max upload size in bytes (default 8MB) |
@@ -105,8 +105,8 @@ curl -X DELETE http://localhost:3000/api/events/winter-lan-2026 \
 
 1. In Coolify, add a new service and pick the MinIO template (or deploy the `minio/minio` image directly with a persistent volume mounted at `/data`).
 2. Give it a subdomain in Coolify (e.g. `minio.gamersunitelan.com`) so Traefik issues a cert — same step your other subdomains needed.
-3. Log into the MinIO console, create a bucket (e.g. `gul-images`), and set its access policy to public **read-only** (so `S3_PUBLIC_URL_BASE` works without presigning every URL). Create an access key/secret scoped to that bucket for the API to use — don't reuse MinIO's root credentials here.
-4. Set `S3_PUBLIC_URL_BASE` to `https://minio.gamersunitelan.com/gul-images` (path-style), or put Cloudflare/a CDN in front of it if you want a nicer public hostname.
+3. Log into the MinIO console, create a bucket (e.g. `gul-images`), and set its access policy to public **read-only** (so `PUBLIC_ASSET_URL_BASE` works without presigning every URL). Create an access key/secret scoped to that bucket for the API to use — don't reuse MinIO's root credentials here.
+4. Set `PUBLIC_ASSET_URL_BASE` to `https://minio.gamersunitelan.com/gul-images` (path-style), or put Cloudflare/a CDN in front of it if you want a nicer public hostname.
 5. Back up the MinIO data volume periodically — it has no built-in replication, and it shares disk with everything else on the server.
 
-Switching to Hetzner Object Storage (or any other S3-compatible provider) later means creating a bucket there and updating `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, and `S3_PUBLIC_URL_BASE` — `storage.js` and `server.js` don't change.
+Switching to Hetzner Object Storage (or any other S3-compatible provider) later means creating a bucket there and updating `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, and `PUBLIC_ASSET_URL_BASE` — `storage.js` and `server.js` don't change.
