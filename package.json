@@ -8,7 +8,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "node dev.js",
     "build": "vue-tsc && vite-ssg build",
     "preview": "vite preview",
     "api:dev": "node --watch src-api/dev-server.js",

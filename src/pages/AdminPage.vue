@@ -222,7 +222,7 @@ type EventDetail = { event: Omit<EventSummary, "coverUrl">; images: EventImage[]
 type AdminEvent = EventSummary & { images: EventImage[] };
 type UploadStatus = { name: string; state: "pending" | "uploading" | "uploaded" | "failed"; message?: string };
 
-const apiUrl = ref(import.meta.env.VITE_API_URL || "");
+const apiUrl = ref(import.meta.env.DEV ? "" : import.meta.env.VITE_API_URL || "");
 const apiKey = ref("");
 const isValidApiKey = ref(false);
 const validating = ref(false);

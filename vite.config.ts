@@ -15,9 +15,11 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     proxy: {
-      // Local dev: serve /api same-origin and forward to the API server,
-      // so browser requests never need CORS.
-      "/api": "http://localhost:3000",
+      // Local dev: serve /api same-origin and strip the frontend prefix.
+      "/api": {
+        target: "http://localhost:3000",
+        rewrite: (path) => path.replace(/^\/api/, ""),
+      },
     },
   },
   resolve: {

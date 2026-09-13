@@ -22,7 +22,7 @@ type EventDetail = {
 };
 
 const seasons: Season[] = ["winter", "spring", "summer", "autumn"];
-const apiUrl = import.meta.env.VITE_API_URL || "";
+const apiUrl = import.meta.env.DEV ? "" : import.meta.env.VITE_API_URL || "";
 const showOverview = ref(true);
 const events = ref<EventSummary[]>([]);
 const selectedEvent = ref<EventDetail | null>(null);
