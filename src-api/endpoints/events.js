@@ -239,7 +239,14 @@ export default function registerEvents(app, { db, storage }) {
     res.json({
       nextDateTime: `${event.eventDate}T${event.startTime}:00`,
       endDateTime: `${event.eventDate}T${event.endTime}:00`,
-      event,
+      event: {
+        name: event.name,
+        slug: event.slug,
+        eventDate: event.eventDate,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        season: event.season,
+      },
     });
   });
 
