@@ -31,6 +31,8 @@ export function createDatabase(databasePath = process.env.DATABASE_PATH || defau
       name TEXT NOT NULL,
       slug TEXT NOT NULL UNIQUE COLLATE NOCASE,
       event_date TEXT NOT NULL,
+      start_time TEXT NOT NULL DEFAULT '10:00',
+      end_time TEXT NOT NULL DEFAULT '18:00',
       season TEXT,
       cover_image_id TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -38,6 +40,12 @@ export function createDatabase(databasePath = process.env.DATABASE_PATH || defau
     )
   `);
   const eventColumns = db.prepare("PRAGMA table_info(events)").all();
+  if (!eventColumns.some(({ name }) => name === "start_time")) {
+    db.exec("ALTER TABLE events ADD COLUMN start_time TEXT NOT NULL DEFAULT '10:00'");
+  }
+  if (!eventColumns.some(({ name }) => name === "end_time")) {
+    db.exec("ALTER TABLE events ADD COLUMN end_time TEXT NOT NULL DEFAULT '18:00'");
+  }
   if (!eventColumns.some(({ name }) => name === "season")) {
     db.exec("ALTER TABLE events ADD COLUMN season TEXT");
   }

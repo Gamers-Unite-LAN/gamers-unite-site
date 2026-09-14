@@ -150,6 +150,8 @@ test("validates event seasons and derives a slug from the name", () => {
       value: {
         name: "Winter LAN 2026",
         eventDate: "2026-01-17",
+        startTime: "10:00",
+        endTime: "18:00",
         season: "winter",
         slug: "winter-lan-2026",
       },
@@ -181,6 +183,29 @@ test("validates event seasons and derives a slug from the name", () => {
       error: "eventDate must be in YYYY-MM-DD format.",
     },
   );
+  assert.deepEqual(
+    validateEvent({
+    name: "Winter LAN",
+    eventDate: "2026-01-17",
+    startTime: "1000",
+    season: "winter",
+    }),
+    {
+    error: "startTime must be in HH:MM format.",
+    },
+  );
+  assert.deepEqual(
+    validateEvent({
+    name: "Winter LAN",
+    eventDate: "2026-01-17",
+    startTime: "18:00",
+    endTime: "10:00",
+    season: "winter",
+    }),
+    {
+    error: "endTime must be later than startTime.",
+    },
+  );
 });
 
 test("creates an event and rejects duplicate slugs by disambiguating", async () => {
@@ -197,6 +222,8 @@ test("creates an event and rejects duplicate slugs by disambiguating", async () 
     assert.equal(create.status, 201);
     const { event } = await create.json();
     assert.equal(event.slug, "winter-lan");
+    assert.equal(event.startTime, "10:00");
+    assert.equal(event.endTime, "18:00");
 
     const createAgain = await fetch(`${baseUrl}/events`, {
       method: "POST",
@@ -212,7 +239,7 @@ test("creates an event and rejects duplicate slugs by disambiguating", async () 
   });
 });
 
-test("updates event name, date, and season", async () => {
+test("updates event name, date, time, and season", async () => {
   await withServer(async ({ baseUrl }) => {
     const create = await fetch(`${baseUrl}/events`, {
       method: "POST",
@@ -231,6 +258,8 @@ test("updates event name, date, and season", async () => {
       body: JSON.stringify({
         name: "Renamed LAN",
         eventDate: "2026-08-02",
+        startTime: "11:00",
+        endTime: "19:30",
         season: null,
       }),
     });
@@ -239,6 +268,8 @@ test("updates event name, date, and season", async () => {
       name: "Renamed LAN",
       slug: "legacy-lan",
       eventDate: "2026-08-02",
+      startTime: "11:00",
+      endTime: "19:30",
       season: null,
     });
 
@@ -247,7 +278,62 @@ test("updates event name, date, and season", async () => {
       name: "Renamed LAN",
       slug: "legacy-lan",
       eventDate: "2026-08-02",
+      startTime: "11:00",
+      endTime: "19:30",
       season: null,
+    });
+  });
+});
+
+test("returns the next upcoming event date time", async () => {
+  await withServer(async ({ baseUrl }) => {
+    await fetch(`${baseUrl}/events`, {
+      method: "POST",
+      headers: authed({ "content-type": "application/json" }),
+      body: JSON.stringify({
+        name: "Past LAN",
+        eventDate: "2020-01-01",
+        season: "winter",
+      }),
+    });
+
+    await fetch(`${baseUrl}/events`, {
+      method: "POST",
+      headers: authed({ "content-type": "application/json" }),
+      body: JSON.stringify({
+        name: "Later LAN",
+        eventDate: "2099-07-05",
+        startTime: "12:00",
+        endTime: "20:00",
+        season: "summer",
+      }),
+    });
+
+    await fetch(`${baseUrl}/events`, {
+      method: "POST",
+      headers: authed({ "content-type": "application/json" }),
+      body: JSON.stringify({
+        name: "Sooner LAN",
+        eventDate: "2099-07-04",
+        startTime: "09:30",
+        endTime: "18:30",
+        season: "summer",
+      }),
+    });
+
+    const response = await fetch(`${baseUrl}/next-date`);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+
+    assert.equal(body.nextDateTime, "2099-07-04T09:30:00");
+    assert.equal(body.endDateTime, "2099-07-04T18:30:00");
+    assert.deepEqual(body.event, {
+      name: "Sooner LAN",
+      slug: "sooner-lan",
+      eventDate: "2099-07-04",
+      startTime: "09:30",
+      endTime: "18:30",
+      season: "summer",
     });
   });
 });

@@ -21,7 +21,10 @@ export const ALLOWED_IMAGE_TYPES = new Set([
 ]);
 export const MAX_EVENT_NAME_LENGTH = 120;
 export const EVENT_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+export const EVENT_TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 export const EVENT_SEASONS = ["winter", "spring", "summer", "autumn"];
+export const DEFAULT_EVENT_START_TIME = "10:00";
+export const DEFAULT_EVENT_END_TIME = "18:00";
 export const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 30);
 export const RATE_LIMIT_WINDOW_MS = Number(
   process.env.RATE_LIMIT_WINDOW_MS || 60_000,

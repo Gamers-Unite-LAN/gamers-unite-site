@@ -8,8 +8,11 @@ import { logger } from "../logger.js";
 import {
   ALLOWED_IMAGE_TYPES,
   cleanString,
+  DEFAULT_EVENT_END_TIME,
+  DEFAULT_EVENT_START_TIME,
   EVENT_DATE_PATTERN,
   EVENT_SEASONS,
+  EVENT_TIME_PATTERN,
   isAuthorizedUploader,
   MAX_EVENT_NAME_LENGTH,
   MAX_IMAGE_SIZE,
@@ -24,6 +27,28 @@ function validateSeason(value) {
   }
   return season;
 }
+
+function validateEventTime(value, field, fallback) {
+  if (value === undefined) return { value: fallback };
+  const eventTime = cleanString(value, field, 5, true);
+  if (eventTime.error) return eventTime;
+  if (!EVENT_TIME_PATTERN.test(eventTime.value)) {
+    return { error: `${field} must be in HH:MM format.` };
+  }
+  return eventTime;
+}
+
+function toEventDateTime(eventDate, eventTime) {
+  return new Date(`${eventDate}T${eventTime}:00`);
+}
+
+function validateEventWindow(startTime, endTime) {
+  if (endTime <= startTime) {
+    return { error: "endTime must be later than startTime." };
+  }
+  return null;
+}
+
 function validateEventUpdate(input, current) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return { error: "Request body must be a JSON object." };
@@ -44,6 +69,18 @@ function validateEventUpdate(input, current) {
     return { error: "eventDate must be in YYYY-MM-DD format." };
   }
 
+  const startTime = validateEventTime(
+    input.startTime,
+    "startTime",
+    current.startTime,
+  );
+  if (startTime.error) return startTime;
+
+  const endTime = validateEventTime(input.endTime, "endTime", current.endTime);
+  if (endTime.error) return endTime;
+  const eventWindow = validateEventWindow(startTime.value, endTime.value);
+  if (eventWindow) return eventWindow;
+
   const season =
     input.season === undefined
       ? { value: current.season }
@@ -52,7 +89,15 @@ function validateEventUpdate(input, current) {
         : validateSeason(input.season);
   if (season.error) return season;
 
-  return { value: { name: name.value, eventDate: eventDate.value, season: season.value } };
+  return {
+    value: {
+      name: name.value,
+      eventDate: eventDate.value,
+      startTime: startTime.value,
+      endTime: endTime.value,
+      season: season.value,
+    },
+  };
 }
 
 
@@ -70,6 +115,22 @@ export function validateEvent(input) {
     return { error: "eventDate must be in YYYY-MM-DD format." };
   }
 
+  const startTime = validateEventTime(
+    input.startTime,
+    "startTime",
+    DEFAULT_EVENT_START_TIME,
+  );
+  if (startTime.error) return startTime;
+
+  const endTime = validateEventTime(
+    input.endTime,
+    "endTime",
+    DEFAULT_EVENT_END_TIME,
+  );
+  if (endTime.error) return endTime;
+  const eventWindow = validateEventWindow(startTime.value, endTime.value);
+  if (eventWindow) return eventWindow;
+
   const season = validateSeason(input.season);
   if (season.error) return season;
 
@@ -82,6 +143,8 @@ export function validateEvent(input) {
     value: {
       name: name.value,
       eventDate: eventDate.value,
+      startTime: startTime.value,
+      endTime: endTime.value,
       season: season.value,
       slug,
     },
@@ -90,17 +153,25 @@ export function validateEvent(input) {
 
 export default function registerEvents(app, { db, storage }) {
   const insertEvent = db.prepare(
-    `INSERT INTO events (name, slug, event_date, season) VALUES (?, ?, ?, ?)`,
+    `INSERT INTO events (name, slug, event_date, start_time, end_time, season) VALUES (?, ?, ?, ?, ?, ?)`,
   );
   const listEvents = db.prepare(`
-    SELECT e.id, e.name, e.slug, e.event_date AS eventDate, e.season,
+    SELECT e.id, e.name, e.slug, e.event_date AS eventDate,
+      e.start_time AS startTime, e.end_time AS endTime, e.season,
       i.storage_key AS coverStorageKey
     FROM events e
     LEFT JOIN images i ON i.id = e.cover_image_id
-    ORDER BY e.event_date DESC, e.id DESC
+    ORDER BY e.event_date DESC, e.start_time DESC, e.id DESC
+  `);
+  const listEventsByStart = db.prepare(`
+    SELECT id, name, slug, event_date AS eventDate,
+      start_time AS startTime, end_time AS endTime, season
+    FROM events
+    ORDER BY event_date ASC, start_time ASC, id ASC
   `);
   const findEventBySlug = db.prepare(`
-    SELECT id, name, slug, event_date AS eventDate, season,
+    SELECT id, name, slug, event_date AS eventDate,
+      start_time AS startTime, end_time AS endTime, season,
       cover_image_id AS coverImageId
     FROM events WHERE slug = ?
   `);
@@ -124,7 +195,7 @@ export default function registerEvents(app, { db, storage }) {
     `UPDATE events SET cover_image_id = ? WHERE id = ?`,
   );
   const updateEvent = db.prepare(
-    `UPDATE events SET name = ?, event_date = ?, season = ? WHERE id = ?`,
+    `UPDATE events SET name = ?, event_date = ?, start_time = ?, end_time = ?, season = ? WHERE id = ?`,
   );
 
   function uniqueSlug(baseSlug) {
@@ -143,12 +214,32 @@ export default function registerEvents(app, { db, storage }) {
         name: row.name,
         slug: row.slug,
         eventDate: row.eventDate,
+        startTime: row.startTime,
+        endTime: row.endTime,
         season: row.season,
         coverUrl:
           row.coverStorageKey && storage
             ? storage.publicUrl(row.coverStorageKey)
             : null,
       })),
+    });
+  });
+
+  app.get("/next-date", (req, res) => {
+    const now = Date.now();
+    const event = listEventsByStart
+      .all()
+      .find((row) => toEventDateTime(row.eventDate, row.startTime).getTime() >= now);
+
+    if (!event) {
+      res.status(404).json({ error: "No upcoming events found." });
+      return;
+    }
+
+    res.json({
+      nextDateTime: `${event.eventDate}T${event.startTime}:00`,
+      endDateTime: `${event.eventDate}T${event.endTime}:00`,
+      event,
     });
   });
 
@@ -177,6 +268,8 @@ export default function registerEvents(app, { db, storage }) {
           validation.value.name,
           slug,
           validation.value.eventDate,
+          validation.value.startTime,
+          validation.value.endTime,
           validation.value.season,
         );
         logger.info(
@@ -188,6 +281,8 @@ export default function registerEvents(app, { db, storage }) {
             name: validation.value.name,
             slug,
             eventDate: validation.value.eventDate,
+            startTime: validation.value.startTime,
+            endTime: validation.value.endTime,
             season: validation.value.season,
           },
         });
@@ -219,6 +314,8 @@ export default function registerEvents(app, { db, storage }) {
       updateEvent.run(
         validation.value.name,
         validation.value.eventDate,
+        validation.value.startTime,
+        validation.value.endTime,
         validation.value.season,
         event.id,
       );
@@ -227,6 +324,8 @@ export default function registerEvents(app, { db, storage }) {
           name: validation.value.name,
           slug: event.slug,
           eventDate: validation.value.eventDate,
+          startTime: validation.value.startTime,
+          endTime: validation.value.endTime,
           season: validation.value.season,
         },
       });
@@ -255,6 +354,8 @@ export default function registerEvents(app, { db, storage }) {
         name: event.name,
         slug: event.slug,
         eventDate: event.eventDate,
+        startTime: event.startTime,
+        endTime: event.endTime,
         season: event.season,
       },
       images,
