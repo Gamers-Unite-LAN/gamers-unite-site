@@ -1,12 +1,25 @@
 <script setup lang="ts">
-import { reactive } from "vue";
+import { computed, reactive } from "vue";
 import { Calendar, MapPin, Clock, ChevronRight } from "lucide-vue-next";
+import {
+  formatEventDate,
+  formatEventTime,
+  homepageState,
+} from "@/lib/homepageState";
 
 const contactForm = reactive({ firstName: "", lastName: "", email: "", subject: "", message: "" });
 function handleSubmit() {
   const { firstName, lastName, email, subject, message } = contactForm;
   window.location.href = `mailto:gamersunitelanparty@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(`Hello I am ${firstName} ${lastName}, my Email is ${email}.\n${message}`)}`;
 }
+
+const nextEvent = computed(() => homepageState.nextEvent?.event || null);
+const nextEventDate = computed(() => nextEvent.value ? formatEventDate(nextEvent.value.eventDate) : "Next date to be announced");
+const nextEventWindow = computed(() =>
+  nextEvent.value
+    ? `${formatEventTime(nextEvent.value.startTime)} – ${formatEventTime(nextEvent.value.endTime)}`
+    : "Time to be announced",
+);
 </script>
 
 <template>
@@ -27,8 +40,8 @@ function handleSubmit() {
                   <Calendar />
                 </div>
                 <div>
-                  <dt class="font-bold">8th Aug 2026</dt>
-                  <dd class="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">10AM – 6PM</dd>
+                  <dt class="font-bold">{{ nextEventDate }}</dt>
+                  <dd class="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">{{ nextEventWindow }}</dd>
                 </div>
               </div>
               <div class="flex gap-4">
