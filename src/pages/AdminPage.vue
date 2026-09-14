@@ -379,6 +379,8 @@ async function reorderImages(event: AdminEvent, imageIds: string[]) {
     notice.value = "Image order saved.";
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : "Unable to reorder images.";
+    await loadEvents();
+    if (selectedSlug.value === event.slug) await loadSelectedEvent();
   } finally {
     reorderingImagesSlug.value = "";
   }
