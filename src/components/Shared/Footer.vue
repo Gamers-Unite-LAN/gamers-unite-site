@@ -1,104 +1,15 @@
-<script setup lang="ts">
-import Separator from "@/components/ui/separator/Separator.vue";
-</script>
-
 <template>
-  <footer id="footer" class="container py-24 pb-16 sm:py-32 sm:pb-24">
-    <div class="p-10 bg-muted/50 dark:bg-card border rounded-2xl">
-      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-x-12 gap-y-8">
-        <div class="col-span-full xl:col-span-1">
-
-          <a href="/" class="flex font-bold items-center">
-            <img class="w-[3rem] rounded-lg relative rouded-lg leading-none flex items-center" :src="'assets/Logo.png'"
-              alt="GamersUnite Logo" />
-
-            <h3 class="text-2xl">Gamers Unite!</h3>
-
-          </a>
+  <footer class="bg-card py-16">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="grid gap-12 border-b border-border pb-12 md:grid-cols-[1.5fr_1fr_1fr]">
+        <div>
+          <a href="/" class="flex items-center gap-3 font-extrabold"><img src="/assets/Logo.png" alt="Gamers Unite! LAN" class="size-11 rounded-xl" /><span class="text-xl">Gamers <span class="text-primary">Unite!</span></span></a>
+          <p class="mt-5 max-w-sm text-sm leading-6 text-muted-foreground">Local LAN events for gamers who want more than matchmaking. Bring your setup, meet your squad.</p>
         </div>
-
-        <div class="flex flex-col gap-2">
-          <h3 class="font-bold text-lg">Help</h3>
-          <div>
-            <a href="#contact" class="opacity-60 hover:opacity-100">
-              Contact Us
-            </a>
-          </div>
-
-          <div>
-            <a href="#faq" class="opacity-60 hover:opacity-100">
-              FAQ
-            </a>
-          </div>
-
-          <div>
-            <a href="#contact" class="opacity-60 hover:opacity-100">
-              Feedback
-            </a>
-          </div>
-        </div>
-
-        <div class="flex flex-col gap-2">
-          <h3 class="font-bold text-lg">Socials</h3>
-
-          <div class="flex flex-col md:flex-row gap-2 md:gap-10">
-            <div class="flex flex-col gap-2">
-              <div>
-                <a href="https://discord.gg/2akPpZD73v" target="_blank" class="opacity-60 hover:opacity-100">
-                  Discord
-                </a>
-              </div>
-
-              <div>
-                <a href="https://x.com/GamersUniteLAN" target="_blank" class="opacity-60 hover:opacity-100">
-                  X
-                </a>
-              </div>
-
-              <div>
-                <a href="https://www.facebook.com/profile.php?id=61567250554322" target="_blank"
-                  class="opacity-60 hover:opacity-100">
-                  Facebook
-                </a>
-              </div>
-            </div>
-
-            <div class="flex flex-col gap-2">
-              <div>
-                <a href="https://www.instagram.com/gamersunitelan/" target="_blank"
-                  class="opacity-60 hover:opacity-100">
-                  Instagram
-                </a>
-              </div>
-
-              <div>
-                <a href="https://www.youtube.com/@GamersUnite923" target="_blank" class="opacity-60 hover:opacity-100">
-                  Youtube
-                </a>
-              </div>
-
-              <div>
-                <a href="https://www.reddit.com/r/GamersUniteLAN/" target="_blank" class="opacity-60 hover:opacity-100">
-                  Reddit
-                </a>
-              </div>
-            </div>
-
-          </div>
-
-        </div>
+        <div class="space-y-3 text-sm"><h2 class="font-bold text-foreground">Explore</h2><a href="/#games" class="block text-muted-foreground hover:text-primary">Games</a><a href="/#contact" class="block text-muted-foreground hover:text-primary">Next LAN</a><RouterLink to="/core-principles" class="block text-muted-foreground hover:text-primary">Core principles</RouterLink><RouterLink to="/documents" class="block text-muted-foreground hover:text-primary">Documents</RouterLink></div>
+        <div class="space-y-3 text-sm"><h2 class="font-bold text-foreground">Find us</h2><a href="https://discord.gg/2akPpZD73v" target="_blank" rel="noreferrer" class="block text-muted-foreground hover:text-primary">Discord</a><a href="https://x.com/GamersUniteLAN" target="_blank" rel="noreferrer" class="block text-muted-foreground hover:text-primary">X</a><a href="https://www.facebook.com/profile.php?id=61567250554322" target="_blank" rel="noreferrer" class="block text-muted-foreground hover:text-primary">Facebook</a><a href="/#contact" class="block text-muted-foreground hover:text-primary">Contact</a></div>
       </div>
-
-      <Separator class="my-6" />
-      <section className="">
-        <h3 class="">
-          &copy; 2024 Developed by
-          <a target="_blank" href="https://github.com/thenerdman"
-            className="text-primary transition-all border-primary hover:border-b-2">
-            Alex Wilson
-          </a>
-        </h3>
-      </section>
+      <p class="pt-8 text-xs text-muted-foreground">© 2024 Gamers Unite! LAN. Developed by <a href="https://github.com/thenerdman" target="_blank" rel="noreferrer" class="text-primary hover:underline">Alex Wilson</a>.</p>
     </div>
   </footer>
 </template>

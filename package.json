@@ -4,14 +4,21 @@
   "version": "0.0.1",
   "type": "module",
   "private": true,
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
-    "dev": "vite",
+    "dev": "node dev.js",
     "build": "vue-tsc && vite-ssg build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "api:dev": "node --watch src-api/dev-server.js",
+    "api:start": "node src-api/server.js",
+    "api:test": "node --test src-api/server.test.js"
   },
   "dependencies": {
     "@selemondev/vue3-marquee": "^0.0.8",
     "@vee-validate/zod": "^4.13.2",
+    "@vueuse/components": "^14.4.0",
     "@vueuse/core": "^11.3.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",

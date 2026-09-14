@@ -1,94 +1,14 @@
 <script setup lang="ts">
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-
-interface FAQProps {
-  question: string;
-  answer: string;
-  value: string;
-}
-
-const FAQList: FAQProps[] = [
-  {
-    question: "Is there an age limit?",
-    answer: "Yes, attendees must be 16 or older.",
-    value: "item-1",
-  },
-  {
-    question: "What type of system should I bring?",
-    answer:
-      "We currently play on PC, however if enough people want to play on consoles we can look into this too!",
-    value: "item-2",
-  },
-  {
-    question:
-      "Do I need to book a place?",
-    answer:
-      "No, it's a free, first-come, first-served event. We are currently limited by seat capacity and hardware availability. If we're full, you may be turned away.",
-    value: "item-3",
-  },
-  {
-    question: "Can I request a game?",
-    answer: "Yes! Submit your game request on our Discord server in the #game-requests channel.",
-    value: "item-4",
-  },
-  {
-    question:
-      "What about food and drink?",
-    answer: "While we provide limited snacks, it helps if you bring your own. We also tend to all pool together and get a pizza delivered however there is no obligation to join in on this.",
-    value: "item-5",
-  },
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+const faqs = [
+  ["Is there an age limit?", "Yes, attendees must be 16 or older."],
+  ["What system should I bring?", "We currently play on PC. If enough people want consoles, we can look into that too."],
+  ["Do I need to book a place?", "No. Entry is free and first-come, first-served, but capacity and hardware are limited."],
+  ["Can I request a game?", "Yes. Submit your game request in the #game-requests Discord channel."],
+  ["What about food and drink?", "We provide limited snacks. Bring your own if you prefer; groups often arrange a pizza delivery."],
 ];
 </script>
 
 <template>
-  <section
-    id="faq"
-    class="container md:w-[700px] py-24 sm:py-32"
-  >
-    <div class="text-center mb-8">
-      <h2 class="text-lg text-primary text-center mb-2 tracking-wider">FAQS</h2>
-
-      <h2 class="text-3xl md:text-4xl text-center font-bold">
-        Common Questions
-      </h2>
-    </div>
-
-    <Accordion
-      type="single"
-      collapsible
-      class="AccordionRoot"
-    >
-      <AccordionItem
-        v-for="{ question, answer, value } in FAQList"
-        :key="value"
-        :value="value"
-      >
-        <AccordionTrigger class="text-left"> {{ question }} </AccordionTrigger>
-
-        <AccordionContent>{{ answer }}</AccordionContent>
-      </AccordionItem>
-    </Accordion>
-
-    <h3 class="font-medium mt-4">
-      Still have questions?
-      <a
-        href="#contact"
-        class="text-muted-foreground underline"
-      >
-      Contact us
-      </a>
-      or
-      <a
-        href="#community"
-        class="text-muted-foreground underline"
-      >
-      Join our discord
-      </a>
-    </h3>
-  </section>
+  <section id="faq" class="bg-background py-24 sm:py-32"><div class="mx-auto max-w-3xl px-4 sm:px-6"><div class="mb-12 text-center"><p class="text-xs font-bold uppercase tracking-[.2em] text-primary">Need to know</p><h2 class="mt-4 text-4xl font-extrabold tracking-tight sm:text-5xl">Common questions</h2></div><Accordion type="single" collapsible class="rounded-3xl border border-border bg-card px-6 sm:px-8"><AccordionItem v-for="([question, answer], index) in faqs" :key="question" :value="`item-${index}`"><AccordionTrigger class="text-left text-base font-bold hover:text-primary">{{ question }}</AccordionTrigger><AccordionContent class="text-muted-foreground">{{ answer }}</AccordionContent></AccordionItem></Accordion><p class="mt-7 text-center text-sm text-muted-foreground">Still have questions? <a href="#contact" class="font-bold text-primary hover:underline">Contact us</a> or <a href="#community" class="font-bold text-primary hover:underline">join Discord</a>.</p></div></section>
 </template>

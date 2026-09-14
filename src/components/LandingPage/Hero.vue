@@ -1,94 +1,61 @@
 <template>
-  <section class="container">
-    <div class="grid place-items-center lg:max-w-screen-xl gap-8 mx-auto py-20 md:py-32">
-      <div class="text-center space-y-8">
-
-        <div class="max-w-screen-md mx-auto text-center text-5xl md:text-6xl font-bold">
-          <h1>
-            Join your local community at
-            <span class="text-transparent bg-gradient-to-r from-[#972c89] to-primary bg-clip-text">Gamers Unite
-            </span>
-            LAN events
-          </h1>
+  <section class="relative overflow-hidden bg-dot-pattern bg-dots">
+    <div class="pointer-events-none absolute -left-32 top-8 size-[30rem] rounded-full bg-primary/15 blur-3xl"></div>
+    <div class="pointer-events-none absolute -right-24 bottom-0 size-[26rem] rounded-full bg-secondary/10 blur-3xl">
+    </div>
+    <div
+      class="relative mx-auto grid min-h-[calc(90vh-5rem)] max-w-7xl items-center gap-14 px-4 py-24 sm:px-6 lg:grid-cols-2 lg:px-8">
+      <div>
+        <p
+          class="mb-7 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary">
+          Wiltshire local LAN events</p>
+        <h1
+          class="max-w-3xl text-5xl font-extrabold leading-[1.04] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
+          Join your local <span class="bg-brand-gradient bg-clip-text text-transparent">gaming community</span>.</h1>
+        <p class="mt-7 max-w-xl text-lg leading-8 text-muted-foreground sm:text-xl">Meet people who share your passion,
+          play great games, and make lasting connections at Gamers Unite! LAN events.</p>
+        <div class="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
+          <a href="#contact"
+            class="inline-flex items-center justify-center rounded-xl bg-primary px-8 py-4 text-lg font-bold text-foreground shadow-brand transition hover:scale-105 hover:bg-secondary">Grab
+            your seat</a>
+          <a href="#community"
+            class="inline-flex items-center gap-3 font-bold uppercase tracking-widest text-sm text-muted-foreground transition hover:text-primary">Join
+            Discord <span class="h-px w-10 bg-primary/50"></span></a>
         </div>
-
-        <p class="max-w-screen-sm mx-auto text-xl text-muted-foreground">
-          Meet with people who share your passion and connect with new
-          friends. Join us for exciting LAN events and make lasting
-          connections.
-        </p>
       </div>
-
-      <div class="relative group mt-14">
-        <!-- gradient shadow -->
-        <div class="absolute -top-6 right-12 w-[90%] h-12 lg:h-[80%] glowing-shadow blur-3xl rounded-full"></div>
-
-        <DesktopCarousel v-if="isDesktop"
-          class="w-full md:w-[1200px] mx-auto rounded-lg relative rouded-lg leading-none flex items-center glowing-border" />
-        <MobileCarousel v-else
-          class="w-full md:w-[1200px] mx-auto rounded-lg relative rouded-lg leading-none flex items-center glowing-border" />
-
-        <!-- gradient effect img -->
-        <div
-          class="absolute bottom-0 left-0 w-full h-20 md:h-28 bg-gradient-to-b from-background/0 via-background/50 to-background rounded-lg">
+      <div class="relative animate-float transform-gpu [will-change:transform]">
+        <div class="absolute -inset-4 translate-x-4 translate-y-4 rounded-[2rem]"></div>
+        <div class="relative aspect-[4/3]">
+          <Transition enter-active-class="absolute inset-0 transition-opacity duration-1000 ease-in-out motion-reduce:transition-none" enter-from-class="opacity-0" leave-active-class="absolute inset-0 transition-opacity duration-1000 ease-in-out motion-reduce:transition-none" leave-to-class="opacity-0">
+            <img :key="slide.image" :src="slide.image" :alt="slide.alt"
+              class="size-full rounded-[2rem] border-4 border-card object-cover shadow-2xl" />
+          </Transition>
         </div>
+        <Transition enter-active-class="transition-all duration-700 ease-out motion-reduce:transition-none" enter-from-class="translate-y-2 opacity-0" leave-active-class="absolute transition-all duration-500 ease-in motion-reduce:transition-none" leave-to-class="-translate-y-1 opacity-0">
+          <div :key="slide.image"
+            class="absolute -bottom-6 -right-2 max-w-[16rem] rounded-2xl border border-border bg-card p-5 shadow-xl sm:-right-7">
+            <p class="text-xl font-bold text-primary">{{ slide.tagline }}</p>
+            <p class="mt-1 text-sm leading-6 text-muted-foreground">{{ slide.description }}</p>
+          </div>
+        </Transition>
       </div>
     </div>
   </section>
 </template>
+
 <script setup lang="ts">
-import DesktopCarousel from './DesktopCarousel.vue';
-import MobileCarousel from './MobileCarousel.vue';
+import { computed, onMounted, onUnmounted, ref } from "vue";
 
-const isDesktop = window.innerWidth >= 1024;
+const slides = [
+  { image: "/event-images/carousel/GroupImage1.jpg", alt: "Gamers playing together at a Gamers Unite! LAN event", tagline: "Find your squad", description: "Meet local players who love same games." },
+  { image: "/event-images/carousel/GroupImage2.jpg", alt: "Gamers enjoying a Gamers Unite! LAN event", tagline: "Play together", description: "Big matches hit different in same room." },
+  { image: "/event-images/carousel/GroupImage3.jpg", alt: "Friends at a Gamers Unite! LAN event", tagline: "Real connections", description: "Turn off headsets. Turn up community." },
+  { image: "/event-images/carousel/GroupImage5.jpg", alt: "Gaming setups at a Gamers Unite! LAN event", tagline: "Bring your setup", description: "Settle in for full day of games and good company." },
+];
+const currentImage = ref(0);
+const slide = computed(() => slides[currentImage.value]);
+let timer: ReturnType<typeof setInterval>;
+
+onMounted(() => { timer = setInterval(() => { currentImage.value = (currentImage.value + 1) % slides.length; }, 5000); });
+onUnmounted(() => clearInterval(timer));
 </script>
-
-<style scoped>
-.img-shadow-animation {
-  animation-name: img-shadow-animation;
-  animation-iteration-count: infinite;
-  animation-duration: 2s;
-  animation-timing-function: linear;
-  animation-direction: alternate;
-}
-
-.img-border-animation {
-  animation-name: img-border-animation;
-  animation-iteration-count: infinite;
-  animation-duration: 2s;
-  animation-timing-function: linear;
-  animation-direction: alternate;
-}
-
-@keyframes img-shadow-animation {
-  from {
-    opacity: 0.5;
-    transform: translateY(30px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0px);
-  }
-}
-
-.glowing-shadow {
-  background-color: rgba(var(--primary-rgb), 0.5);
-  animation: img-shadow-animation 2s infinite alternate;
-}
-
-@keyframes img-border-animation {
-  from {
-    border-top-color: rgba(var(--primary-rgb), 0.1);
-  }
-
-  to {
-    border-top-color: rgba(var(--primary-rgb), 0.6);
-  }
-}
-
-.glowing-border {
-  border-top-width: 4px;
-  animation: img-border-animation 2s infinite alternate;
-}
-</style>

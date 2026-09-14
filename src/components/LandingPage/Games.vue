@@ -1,98 +1,31 @@
 <script setup lang="ts">
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-interface GamesProps {
-  icon: string;
-  title: string;
-  description: string;
-}
-
-const featureList: GamesProps[] = [
-{
-    icon: "tf2",
-    title: "Team Fortress 2",
-    description:
-      "A fast-paced, team-based shooter with unique character classes, each offering distinct weapons and abilities. Players must work together in modes like Capture the Flag and Control Points, making it a LAN party favorite for its chaotic, fun-filled gameplay and humor.",
-  },
-  {
-    icon: "cs2",
-    title: "Counter Strike 2",
-    description:
-      "The latest evolution of the iconic tactical shooter where teams of terrorists and counter-terrorists compete in objective-based gameplay. With precise gunplay and strategic coordination, it's a staple for competitive LAN matches.",
-  },
-  {
-    icon: "halo",
-    title: "Halo Combat Evolved / Custom Edition",
-    description:
-      "The classic sci-fi FPS that defined LAN gaming, featuring iconic weapons, vehicles, and maps. Players battle it out in modes like Slayer and Capture the Flag, creating unforgettable multiplayer memories.",
-  },
-  {
-    icon: "tmnf",
-    title: "Trackmania Nations Forever",
-    description:
-      "A high-speed, arcade-style racing game where players compete on gravity-defying tracks. It's perfect for LAN, allowing players to showcase precision driving skills and compete for the best lap times in fast-paced matches.",
-  },
-  {
-    icon: "mc",
-    title: "Minecraft Hunger Games",
-    description:
-      "A mini-game that inspired the 'Battle Royale' genre, where players scavenge for resources, craft weapons, and battle to be the last person standing. Perfect for LAN parties with its mix of strategy, creativity, and combat.",
-  },
-  {
-    icon: "q3",
-    title: "Quake 3 Arena",
-    description:
-      "An arena-style FPS emphasizing fast movement and precision shooting. Players compete in adrenaline-fueled deathmatches, utilizing a variety of futuristic weapons in iconic maps built for LAN chaos.",
-  },
+const games = [
+  { icon: "modern", title: "Modern", description: "Games that are popular and widely played in the community, from the latest releases to the current favorites." },
+  { icon: "classic", title: "Classic", description: "Timeless games that have stood the test of time and continue to be enjoyed by the community." },
+  { icon: "wildcard", title: "Wildcard", description: "Games that you think are great for a LAN but are bit on the unconventional side." }
 ];
 </script>
 
 <template>
-  <section
-    id="games"
-    class="container py-24 sm:py-32"
-  >
-    <h2 class="text-lg text-primary text-center mb-2 tracking-wider">
-      Games
-    </h2>
-
-    <h2 class="text-3xl md:text-4xl text-center font-bold mb-4">
-      What do we play?
-    </h2>
-
-    <h3 class="md:w-1/2 mx-auto text-xl text-center text-muted-foreground mb-8">
-      While we all play a variety of games, when it comes to the events, there's only so much time to play so many games.
-      We always welcome suggestions for new and old games to play and try to play the games that we all will enjoy. 
-      Here are some of the games we currently play at events.
-    </h3>
-
-    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div
-        v-for="{ icon, title, description } in featureList"
-        :key="title"
-      >
-        <Card class="h-full bg-background border-0 shadow-none">
-          <CardHeader class="flex justify-center items-center">
-            <div
-              class="bg-primary/20 p-2 rounded-full ring-8 ring-primary/10 mb-4"
-            >
-              <img
-                :src="`game-logos/${icon}.png`"
-                class="size-10 text-primary"
-              />
-            </div>
-
-            <CardTitle class="text-center">
-              {{ title }}
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent class="text-muted-foreground text-center">
-            {{ description }}
-          </CardContent>
-        </Card>
+  <section id="games" class="bg-background py-24 sm:py-32">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="mb-14 max-w-2xl">
+        <p class="text-xs font-bold uppercase tracking-[.2em] text-primary">What we play</p>
+        <h2 class="mt-4 text-4xl font-extrabold tracking-tight sm:text-5xl">Games built for <span
+            class="text-primary">togetherness</span></h2>
+        <p class="mt-5 text-lg leading-8 text-muted-foreground">We play games that our community vote for. Before each
+          event we select games that bring people together. These polls are split into three categories:</p>
+      </div>
+      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <article v-for="game in games" :key="game.title"
+          class="group rounded-3xl border border-border bg-card p-6 transition hover:-translate-y-1 hover:border-primary/60">
+          <div class="flex aspect-[16/8] items-center justify-center rounded-2xl bg-background"><img
+              :src="`/game-poll-categories/${game.icon}.png`" :alt="`${game.title} logo`"
+              class="max-h-24 max-w-[70%] object-contain transition duration-500 group-hover:scale-110" /></div>
+          <h3 class="mt-6 text-xl font-bold text-foreground">{{ game.title }}</h3>
+          <p class="mt-2 text-sm leading-6 text-muted-foreground">{{ game.description }}</p>
+        </article>
       </div>
     </div>
   </section>
 </template>
-
-<style lang="less" scoped></style>
