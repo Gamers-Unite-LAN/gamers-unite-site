@@ -8,11 +8,20 @@ type AdminEvent = {
   name: string;
   slug: string;
   eventDate: string;
+  startTime: string;
+  endTime: string;
   season: Season | null;
   coverUrl: string | null;
   images: EventImage[];
 };
-type EditableEvent = { slug: string; name: string; eventDate: string; season: Season | "" };
+type EditableEvent = {
+  slug: string;
+  name: string;
+  eventDate: string;
+  startTime: string;
+  endTime: string;
+  season: Season | "";
+};
 
 const props = withDefaults(defineProps<{
   event: AdminEvent;
@@ -40,6 +49,8 @@ const isDirty = computed(() => {
   return (
     draft.value.name !== props.event.name ||
     draft.value.eventDate !== props.event.eventDate ||
+    draft.value.startTime !== props.event.startTime ||
+    draft.value.endTime !== props.event.endTime ||
     draft.value.season !== (props.event.season || "")
   );
 });
@@ -58,6 +69,8 @@ function toggleEditing() {
     slug: props.event.slug,
     name: props.event.name,
     eventDate: props.event.eventDate,
+    startTime: props.event.startTime,
+    endTime: props.event.endTime,
     season: props.event.season || "",
   };
 }
@@ -120,6 +133,16 @@ watch(
       <div>
         <label :for="`edit-date-${event.slug}`" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">Date</label>
         <input :id="`edit-date-${event.slug}`" v-model="draft.eventDate" type="date" required class="w-full rounded-lg border bg-background px-3 py-2 text-sm" />
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label :for="`edit-start-${event.slug}`" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">Start time</label>
+          <input :id="`edit-start-${event.slug}`" v-model="draft.startTime" type="time" required class="w-full rounded-lg border bg-background px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <label :for="`edit-end-${event.slug}`" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">End time</label>
+          <input :id="`edit-end-${event.slug}`" v-model="draft.endTime" type="time" required class="w-full rounded-lg border bg-background px-3 py-2 text-sm" />
+        </div>
       </div>
       <div>
         <label :for="`edit-season-${event.slug}`" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">Season</label>

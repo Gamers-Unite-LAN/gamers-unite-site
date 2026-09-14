@@ -73,6 +73,18 @@
               <input id="event-date" v-model="eventDate" type="date" required
                 class="w-full rounded-lg border bg-background px-3 py-2" />
             </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label for="event-start-time" class="mb-2 block text-sm font-bold">Start time</label>
+                <input id="event-start-time" v-model="eventStartTime" type="time" required
+                  class="w-full rounded-lg border bg-background px-3 py-2" />
+              </div>
+              <div>
+                <label for="event-end-time" class="mb-2 block text-sm font-bold">End time</label>
+                <input id="event-end-time" v-model="eventEndTime" type="time" required
+                  class="w-full rounded-lg border bg-background px-3 py-2" />
+              </div>
+            </div>
             <div>
               <label for="event-season" class="mb-2 block text-sm font-bold">Season</label>
               <select id="event-season" v-model="eventSeason" required class="w-full rounded-lg border bg-background px-3 py-2">
@@ -189,11 +201,26 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 type Season = "winter" | "spring" | "summer" | "autumn";
 const seasons: Season[] = ["winter", "spring", "summer", "autumn"];
-type EventSummary = { name: string; slug: string; eventDate: string; season: Season | null; coverUrl: string | null };
+type EventSummary = {
+  name: string;
+  slug: string;
+  eventDate: string;
+  startTime: string;
+  endTime: string;
+  season: Season | null;
+  coverUrl: string | null;
+};
 type EventImage = { id: string; url: string | null; isCover: boolean };
 type EventDetail = { event: Omit<EventSummary, "coverUrl">; images: EventImage[] };
 type AdminEvent = EventSummary & { images: EventImage[] };
-type EditableEvent = { slug: string; name: string; eventDate: string; season: Season | "" };
+type EditableEvent = {
+  slug: string;
+  name: string;
+  eventDate: string;
+  startTime: string;
+  endTime: string;
+  season: Season | "";
+};
 type UploadStatus = { name: string; state: "pending" | "uploading" | "uploaded" | "failed"; message?: string };
 
 const apiUrl = ref(import.meta.env.DEV ? "" : import.meta.env.VITE_API_URL || "");
@@ -202,6 +229,8 @@ const isValidApiKey = ref(false);
 const validating = ref(false);
 const eventName = ref("");
 const eventDate = ref("");
+const eventStartTime = ref("10:00");
+const eventEndTime = ref("18:00");
 const eventSeason = ref<Season>("winter");
 const events = ref<AdminEvent[]>([]);
 const selectedSlug = ref("");
@@ -301,6 +330,8 @@ async function saveEvent(edit: EditableEvent) {
       body: JSON.stringify({
         name: edit.name,
         eventDate: edit.eventDate,
+        startTime: edit.startTime,
+        endTime: edit.endTime,
         season: edit.season || null,
       }),
     });
@@ -392,11 +423,19 @@ async function createEvent() {
     const response = await request("/api/events", {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${apiKey.value}` },
-      body: JSON.stringify({ name: eventName.value, eventDate: eventDate.value, season: eventSeason.value }),
+      body: JSON.stringify({
+        name: eventName.value,
+        eventDate: eventDate.value,
+        startTime: eventStartTime.value,
+        endTime: eventEndTime.value,
+        season: eventSeason.value,
+      }),
     });
     const body = await response.json() as { event: EventSummary };
     eventName.value = "";
     eventDate.value = "";
+    eventStartTime.value = "10:00";
+    eventEndTime.value = "18:00";
     eventSeason.value = "winter";
     selectedSlug.value = body.event.slug;
     await loadEvents();
