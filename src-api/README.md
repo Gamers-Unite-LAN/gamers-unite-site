@@ -47,7 +47,7 @@ By default SQLite data persists at `src-api/data/gamers-unite.sqlite`. That path
 npm install @aws-sdk/client-s3
 ```
 
-S3 only ever stores bytes. SQLite (`events` and `images` tables) is the source of truth for which images exist, which event they belong to, upload order, and which image is an event's cover photo. This means the app never needs to list bucket contents to render the gallery — it queries the DB and builds public URLs from stored keys.
+S3 only ever stores bytes. SQLite (`events` and `images` tables) is the source of truth for which images exist, their explicit display order, event visibility, cover-image visibility, event ownership, and which image is an event's cover photo. This means the app never needs to list bucket contents to render the gallery — it queries the DB and builds public URLs from stored keys.
 
 ### Endpoints
 
@@ -61,14 +61,19 @@ curl -X POST http://localhost:3000/api/events \
   -H 'Authorization: Bearer <UPLOAD_API_KEY>' \
   -d '{"name":"Winter LAN 2026","eventDate":"2026-01-17","season":"winter"}'
 
-# Update the season tag on an existing event
+# Update event details or gallery visibility settings
+# `galleryVisible` hides the event from public list/detail responses;
+# `showCoverImage` omits the cover from public event photos.
 curl -X PATCH http://localhost:3000/api/events/winter-lan-2026 \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer <UPLOAD_API_KEY>' \
-  -d '{"season":"winter"}'
+  -d '{"season":"winter","galleryVisible":true,"showCoverImage":true}'
 
-# Get one event + its images (used when a gallery tile is clicked)
-curl http://localhost:3000/api/events/winter-lan-2026
+# Admin-only list/detail access to hidden events
+curl 'http://localhost:3000/api/events?includeHidden=true' \
+  -H 'Authorization: Bearer <UPLOAD_API_KEY>'
+curl 'http://localhost:3000/api/events/winter-lan-2026?includeHidden=true' \
+  -H 'Authorization: Bearer <UPLOAD_API_KEY>'
 
 # Upload a photo to an event. The first upload becomes the cover
 # automatically; pass ?cover=true to make a later upload the cover instead.
@@ -81,12 +86,18 @@ curl -X POST 'http://localhost:3000/api/events/winter-lan-2026/images?filename=h
 curl -X DELETE http://localhost:3000/api/images/<id> \
   -H 'Authorization: Bearer <UPLOAD_API_KEY>'
 
+# Set the complete image display order
+curl -X PATCH http://localhost:3000/api/events/winter-lan-2026/images/order \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <UPLOAD_API_KEY>' \
+  -d '{"imageIds":["<image-id-2>","<image-id-1>"]}'
+
 # Delete an event and all of its images (DB rows and S3 objects)
 curl -X DELETE http://localhost:3000/api/events/winter-lan-2026 \
   -H 'Authorization: Bearer <UPLOAD_API_KEY>'
 ```
 
-`GET /api/events` and `GET /api/events/:slug` are public. Creating and updating events, uploading images, and deleting either require `Authorization: Bearer <UPLOAD_API_KEY>`. Allowed image types: PNG, JPEG, WebP, GIF. Max upload size is 8MB by default (`MAX_IMAGE_SIZE`, in bytes). If storage env vars aren't set, image upload routes return `503`; event/game-recommendation routes keep working normally.
+`GET /api/events` and `GET /api/events/:slug` are public and omit hidden events/images. Authorized admin requests may add `includeHidden=true` to manage hidden events. Creating and updating events, reordering/uploading images, and deleting either require `Authorization: Bearer <UPLOAD_API_KEY>`. Allowed image types: PNG, JPEG, WebP, GIF. Max upload size is 8MB by default (`MAX_IMAGE_SIZE`, in bytes). If storage env vars aren't set, image upload routes return `503`; event/game-recommendation routes keep working normally.
 
 ### Environment variables
 

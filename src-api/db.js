@@ -49,6 +49,12 @@ export function createDatabase(databasePath = process.env.DATABASE_PATH || defau
   if (!eventColumns.some(({ name }) => name === "season")) {
     db.exec("ALTER TABLE events ADD COLUMN season TEXT");
   }
+  if (!eventColumns.some(({ name }) => name === "gallery_visible")) {
+    db.exec("ALTER TABLE events ADD COLUMN gallery_visible INTEGER NOT NULL DEFAULT 1");
+  }
+  if (!eventColumns.some(({ name }) => name === "show_cover_image")) {
+    db.exec("ALTER TABLE events ADD COLUMN show_cover_image INTEGER NOT NULL DEFAULT 1");
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS images (
       id TEXT PRIMARY KEY,
@@ -56,10 +62,15 @@ export function createDatabase(databasePath = process.env.DATABASE_PATH || defau
       storage_key TEXT NOT NULL,
       content_type TEXT NOT NULL,
       size_bytes INTEGER NOT NULL,
+      display_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE
     )
   `);
+  const imageColumns = db.prepare("PRAGMA table_info(images)").all();
+  if (!imageColumns.some(({ name }) => name === "display_order")) {
+    db.exec("ALTER TABLE images ADD COLUMN display_order INTEGER NOT NULL DEFAULT 0");
+  }
   db.exec(`CREATE INDEX IF NOT EXISTS images_event_id_idx ON images (event_id)`);
 
   return db;

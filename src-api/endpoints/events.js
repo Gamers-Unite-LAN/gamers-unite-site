@@ -18,6 +18,9 @@ import {
   MAX_IMAGE_SIZE,
   slugify,
 } from "../utils.js";
+function canIncludeHidden(request) {
+  return request.query.includeHidden === "true" && isAuthorizedUploader(request);
+}
 
 function validateSeason(value) {
   const season = cleanString(value, "season", 20, true);
@@ -49,6 +52,12 @@ function validateEventWindow(startTime, endTime) {
   return null;
 }
 
+function validateBoolean(value, field, fallback) {
+  if (value === undefined) return { value: fallback };
+  if (typeof value !== "boolean") return { error: `${field} must be a boolean.` };
+  return { value };
+}
+
 function validateEventUpdate(input, current) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return { error: "Request body must be a JSON object." };
@@ -69,13 +78,8 @@ function validateEventUpdate(input, current) {
     return { error: "eventDate must be in YYYY-MM-DD format." };
   }
 
-  const startTime = validateEventTime(
-    input.startTime,
-    "startTime",
-    current.startTime,
-  );
+  const startTime = validateEventTime(input.startTime, "startTime", current.startTime);
   if (startTime.error) return startTime;
-
   const endTime = validateEventTime(input.endTime, "endTime", current.endTime);
   if (endTime.error) return endTime;
   const eventWindow = validateEventWindow(startTime.value, endTime.value);
@@ -89,6 +93,11 @@ function validateEventUpdate(input, current) {
         : validateSeason(input.season);
   if (season.error) return season;
 
+  const galleryVisible = validateBoolean(input.galleryVisible, "galleryVisible", Boolean(current.galleryVisible));
+  if (galleryVisible.error) return galleryVisible;
+  const showCoverImage = validateBoolean(input.showCoverImage, "showCoverImage", Boolean(current.showCoverImage));
+  if (showCoverImage.error) return showCoverImage;
+
   return {
     value: {
       name: name.value,
@@ -96,6 +105,8 @@ function validateEventUpdate(input, current) {
       startTime: startTime.value,
       endTime: endTime.value,
       season: season.value,
+      galleryVisible: galleryVisible.value,
+      showCoverImage: showCoverImage.value,
     },
   };
 }
@@ -115,18 +126,9 @@ export function validateEvent(input) {
     return { error: "eventDate must be in YYYY-MM-DD format." };
   }
 
-  const startTime = validateEventTime(
-    input.startTime,
-    "startTime",
-    DEFAULT_EVENT_START_TIME,
-  );
+  const startTime = validateEventTime(input.startTime, "startTime", DEFAULT_EVENT_START_TIME);
   if (startTime.error) return startTime;
-
-  const endTime = validateEventTime(
-    input.endTime,
-    "endTime",
-    DEFAULT_EVENT_END_TIME,
-  );
+  const endTime = validateEventTime(input.endTime, "endTime", DEFAULT_EVENT_END_TIME);
   if (endTime.error) return endTime;
   const eventWindow = validateEventWindow(startTime.value, endTime.value);
   if (eventWindow) return eventWindow;
@@ -158,6 +160,7 @@ export default function registerEvents(app, { db, storage }) {
   const listEvents = db.prepare(`
     SELECT e.id, e.name, e.slug, e.event_date AS eventDate,
       e.start_time AS startTime, e.end_time AS endTime, e.season,
+      e.gallery_visible AS galleryVisible, e.show_cover_image AS showCoverImage,
       i.storage_key AS coverStorageKey
     FROM events e
     LEFT JOIN images i ON i.id = e.cover_image_id
@@ -172,22 +175,27 @@ export default function registerEvents(app, { db, storage }) {
   const findEventBySlug = db.prepare(`
     SELECT id, name, slug, event_date AS eventDate,
       start_time AS startTime, end_time AS endTime, season,
+      gallery_visible AS galleryVisible, show_cover_image AS showCoverImage,
       cover_image_id AS coverImageId
     FROM events WHERE slug = ?
   `);
   const deleteEventById = db.prepare(`DELETE FROM events WHERE id = ?`);
 
   const insertImage = db.prepare(`
-    INSERT INTO images (id, event_id, storage_key, content_type, size_bytes)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO images (id, event_id, storage_key, content_type, size_bytes, display_order)
+    VALUES (?, ?, ?, ?, ?, ?)
   `);
+  const nextImageOrder = db.prepare(
+    `SELECT COALESCE(MAX(display_order), -1) + 1 AS nextOrder FROM images WHERE event_id = ?`,
+  );
   const countImagesForEvent = db.prepare(
     `SELECT COUNT(*) AS count FROM images WHERE event_id = ?`,
   );
   const listImagesForEvent = db.prepare(`
-    SELECT id, storage_key AS storageKey, content_type AS contentType, size_bytes AS sizeBytes, created_at AS createdAt
+    SELECT id, storage_key AS storageKey, content_type AS contentType, size_bytes AS sizeBytes,
+      created_at AS createdAt
     FROM images WHERE event_id = ?
-    ORDER BY rowid ASC
+    ORDER BY display_order ASC, rowid ASC
   `);
   const findImageById = db.prepare(`
     SELECT id, event_id AS eventId, storage_key AS storageKey
@@ -198,7 +206,10 @@ export default function registerEvents(app, { db, storage }) {
     `UPDATE events SET cover_image_id = ? WHERE id = ?`,
   );
   const updateEvent = db.prepare(
-    `UPDATE events SET name = ?, event_date = ?, start_time = ?, end_time = ?, season = ? WHERE id = ?`,
+    `UPDATE events SET name = ?, event_date = ?, start_time = ?, end_time = ?, season = ?, gallery_visible = ?, show_cover_image = ? WHERE id = ?`,
+  );
+  const updateImageOrder = db.prepare(
+    `UPDATE images SET display_order = ? WHERE id = ? AND event_id = ?`,
   );
 
   function uniqueSlug(baseSlug) {
@@ -211,7 +222,8 @@ export default function registerEvents(app, { db, storage }) {
   }
 
   app.get("/events", (req, res) => {
-    const rows = listEvents.all();
+    const includeHidden = canIncludeHidden(req);
+    const rows = listEvents.all().filter((row) => includeHidden || row.galleryVisible);
     res.json({
       events: rows.map((row) => ({
         name: row.name,
@@ -220,8 +232,10 @@ export default function registerEvents(app, { db, storage }) {
         startTime: row.startTime,
         endTime: row.endTime,
         season: row.season,
+        galleryVisible: Boolean(row.galleryVisible),
+        showCoverImage: Boolean(row.showCoverImage),
         coverUrl:
-          row.coverStorageKey && storage
+          row.showCoverImage && row.coverStorageKey && storage
             ? storage.publicUrl(row.coverStorageKey)
             : null,
       })),
@@ -255,12 +269,8 @@ export default function registerEvents(app, { db, storage }) {
 
   app.post("/events", (req, res) => {
     if (!isAuthorizedUploader(req)) {
-      logger.warn("Unauthorized attempt to create event", {
-        ip: req.socket.remoteAddress,
-      });
-      res.status(401).json({
-        error: "Missing or invalid upload credentials.",
-      });
+      logger.warn("Unauthorized attempt to create event", { ip: req.socket.remoteAddress });
+      res.status(401).json({ error: "Missing or invalid upload credentials." });
       return;
     }
 
@@ -282,9 +292,7 @@ export default function registerEvents(app, { db, storage }) {
           validation.value.endTime,
           validation.value.season,
         );
-        logger.info(
-          `Event created: "${validation.value.name}" (slug: ${slug}, id: ${result.lastInsertRowid})`,
-        );
+        logger.info(`Event created: "${validation.value.name}" (slug: ${slug}, id: ${result.lastInsertRowid})`);
         res.status(201).json({
           event: {
             id: result.lastInsertRowid,
@@ -294,6 +302,8 @@ export default function registerEvents(app, { db, storage }) {
             startTime: validation.value.startTime,
             endTime: validation.value.endTime,
             season: validation.value.season,
+            galleryVisible: true,
+            showCoverImage: true,
           },
         });
       } catch (error) {
@@ -302,6 +312,7 @@ export default function registerEvents(app, { db, storage }) {
       }
     });
   });
+
   app.patch("/events/:slug", (req, res) => {
     if (!isAuthorizedUploader(req)) {
       res.status(401).json({ error: "Missing or invalid upload credentials." });
@@ -327,6 +338,8 @@ export default function registerEvents(app, { db, storage }) {
         validation.value.startTime,
         validation.value.endTime,
         validation.value.season,
+        validation.value.galleryVisible ? 1 : 0,
+        validation.value.showCoverImage ? 1 : 0,
         event.id,
       );
       res.json({
@@ -337,6 +350,8 @@ export default function registerEvents(app, { db, storage }) {
           startTime: validation.value.startTime,
           endTime: validation.value.endTime,
           season: validation.value.season,
+          galleryVisible: validation.value.galleryVisible,
+          showCoverImage: validation.value.showCoverImage,
         },
       });
     });
@@ -344,20 +359,24 @@ export default function registerEvents(app, { db, storage }) {
 
   app.get("/events/:slug", (req, res) => {
     const event = findEventBySlug.get(req.params.slug);
-    if (!event) {
+    const includeHidden = canIncludeHidden(req);
+    if (!event || (!includeHidden && !event.galleryVisible)) {
       logger.warn(`Event lookup not found: ${req.params.slug}`);
       res.status(404).json({ error: "Event not found." });
       return;
     }
 
-    const images = listImagesForEvent.all(event.id).map((image) => ({
-      id: image.id,
-      url: storage ? storage.publicUrl(image.storageKey) : null,
-      contentType: image.contentType,
-      sizeBytes: image.sizeBytes,
-      createdAt: image.createdAt,
-      isCover: image.id === event.coverImageId,
-    }));
+    const images = listImagesForEvent
+      .all(event.id)
+      .filter((image) => includeHidden || event.showCoverImage || image.id !== event.coverImageId)
+      .map((image) => ({
+        id: image.id,
+        url: storage ? storage.publicUrl(image.storageKey) : null,
+        contentType: image.contentType,
+        sizeBytes: image.sizeBytes,
+        createdAt: image.createdAt,
+        isCover: image.id === event.coverImageId,
+      }));
 
     res.json({
       event: {
@@ -367,8 +386,49 @@ export default function registerEvents(app, { db, storage }) {
         startTime: event.startTime,
         endTime: event.endTime,
         season: event.season,
+        galleryVisible: Boolean(event.galleryVisible),
+        showCoverImage: Boolean(event.showCoverImage),
       },
       images,
+    });
+  });
+
+  app.patch("/events/:slug/images/order", (req, res) => {
+    if (!isAuthorizedUploader(req)) {
+      res.status(401).json({ error: "Missing or invalid upload credentials." });
+      return;
+    }
+
+    requireJson(req, res, () => {
+      const event = findEventBySlug.get(req.params.slug);
+      if (!event) {
+        res.status(404).json({ error: "Event not found." });
+        return;
+      }
+
+      const imageIds = req.body?.imageIds;
+      const currentImages = listImagesForEvent.all(event.id);
+      const currentIds = new Set(currentImages.map((image) => image.id));
+      if (
+        !Array.isArray(imageIds) ||
+        imageIds.length !== currentImages.length ||
+        imageIds.some((id) => typeof id !== "string" || !currentIds.has(id)) ||
+        new Set(imageIds).size !== imageIds.length
+      ) {
+        res.status(400).json({ error: "imageIds must contain every event image exactly once." });
+        return;
+      }
+
+      try {
+        db.exec("BEGIN");
+        imageIds.forEach((id, index) => updateImageOrder.run(index, id, event.id));
+        db.exec("COMMIT");
+        res.json({ imageIds });
+      } catch (error) {
+        db.exec("ROLLBACK");
+        logger.error(`Failed to reorder images for event "${event.slug}"`, error);
+        res.status(500).json({ error: "Unable to reorder images." });
+      }
     });
   });
 
@@ -418,24 +478,22 @@ export default function registerEvents(app, { db, storage }) {
     requireImageBody(req, res, async () => {
       const body = req.body;
       if (!Buffer.isBuffer(body) || body.length === 0) {
-        logger.warn("Image upload payload empty or invalid buffer", {
-          slug: req.params.slug,
-        });
+        logger.warn("Image upload payload empty or invalid buffer", { slug: req.params.slug });
         res.status(413).json({
           error: `Request body must be between 1 byte and ${MAX_IMAGE_SIZE} bytes.`,
         });
         return;
       }
 
-      const filenameHint =
-        typeof req.query.filename === "string" ? req.query.filename : "";
+      const filenameHint = typeof req.query.filename === "string" ? req.query.filename : "";
       const id = generateImageId(filenameHint);
       const storageKey = keyForImage(event.slug, id);
       const hasExistingImages = Number(countImagesForEvent.get(event.id).count) > 0;
+      const displayOrder = Number(nextImageOrder.get(event.id).nextOrder);
 
       try {
         const imageUrl = await storage.putImage(storageKey, body, contentType);
-        insertImage.run(id, event.id, storageKey, contentType, body.length);
+        insertImage.run(id, event.id, storageKey, contentType, body.length, displayOrder);
 
         const makeCover =
           req.query.cover === "true" || (!event.coverImageId && !hasExistingImages);
@@ -453,7 +511,6 @@ export default function registerEvents(app, { db, storage }) {
       }
     });
   });
-
   app.get("/images/:slug/:id", async (req, res) => {
     if (!storage) {
       res.status(503).json({ error: "Image storage is not configured." });

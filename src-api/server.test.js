@@ -271,6 +271,8 @@ test("updates event name, date, time, and season", async () => {
       startTime: "11:00",
       endTime: "19:30",
       season: null,
+      galleryVisible: true,
+      showCoverImage: true,
     });
 
     const detail = await fetch(`${baseUrl}/events/${event.slug}`);
@@ -281,6 +283,8 @@ test("updates event name, date, time, and season", async () => {
       startTime: "11:00",
       endTime: "19:30",
       season: null,
+      galleryVisible: true,
+      showCoverImage: true,
     });
   });
 });
@@ -580,4 +584,58 @@ test("reports 503 for image uploads when storage is unconfigured", async () => {
     },
     { storage: null },
   );
+});
+test("hides gallery events, hides covers, and persists image order", async () => {
+  await withServer(async ({ baseUrl }) => {
+    const create = await fetch(`${baseUrl}/events`, {
+      method: "POST",
+      headers: authed({ "content-type": "application/json" }),
+      body: JSON.stringify({ name: "Controls LAN", eventDate: "2026-12-12", season: "winter" }),
+    });
+    const { event } = await create.json();
+    const images = [];
+    for (const name of ["one.png", "two.png", "three.png"]) {
+      const response = await fetch(`${baseUrl}/events/${event.slug}/images?filename=${name}`, {
+        method: "POST",
+        headers: authed({ "content-type": "image/png" }),
+        body: Buffer.from(name),
+      });
+      images.push((await response.json()).image);
+    }
+
+    const settings = await fetch(`${baseUrl}/events/${event.slug}`, {
+      method: "PATCH",
+      headers: authed({ "content-type": "application/json" }),
+      body: JSON.stringify({ galleryVisible: false, showCoverImage: false }),
+    });
+    assert.equal(settings.status, 200);
+
+    const publicList = await fetch(`${baseUrl}/events`);
+    assert.deepEqual((await publicList.json()).events, []);
+    assert.equal((await fetch(`${baseUrl}/events/${event.slug}`)).status, 404);
+
+    const reorder = await fetch(`${baseUrl}/events/${event.slug}/images/order`, {
+      method: "PATCH",
+      headers: authed({ "content-type": "application/json" }),
+      body: JSON.stringify({ imageIds: images.map((image) => image.id).reverse() }),
+    });
+    assert.equal(reorder.status, 200);
+
+    const adminDetail = await fetch(`${baseUrl}/events/${event.slug}?includeHidden=true`, { headers: authed() });
+    const adminBody = await adminDetail.json();
+    assert.deepEqual(adminBody.images.map((image) => image.id), images.map((image) => image.id).reverse());
+    assert.equal(adminBody.event.galleryVisible, false);
+    assert.equal(adminBody.event.showCoverImage, false);
+
+    await fetch(`${baseUrl}/events/${event.slug}`, {
+      method: "PATCH",
+      headers: authed({ "content-type": "application/json" }),
+      body: JSON.stringify({ galleryVisible: true }),
+    });
+    const visibleList = await fetch(`${baseUrl}/events`);
+    const listedEvent = (await visibleList.json()).events[0];
+    assert.equal(listedEvent.coverUrl, null);
+    const publicDetail = await fetch(`${baseUrl}/events/${event.slug}`);
+    assert.deepEqual((await publicDetail.json()).images.map((image) => image.id), [images[2].id, images[1].id]);
+  });
 });

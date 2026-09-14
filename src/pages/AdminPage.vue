@@ -176,13 +176,16 @@
           :event="event"
           :seasons="seasons"
           :saving="savingEventSlug === event.slug"
+          :saved-revision="lastSavedEventSlug === event.slug ? eventSaveRevision : 0"
           :deleting="deletingEventSlug === event.slug"
           :deleting-image-id="deletingImageId"
           :setting-cover-image-id="settingCoverImageId"
+          :reordering="reorderingImagesSlug === event.slug"
           @save="saveEvent"
           @delete-event="deleteEvent(event)"
           @delete-image="deleteImage(event, $event)"
           @set-cover="setCoverImage(event, $event)"
+          @reorder-images="reorderImages(event, $event)"
         />
         </div>
       </section>
@@ -200,9 +203,9 @@
 import { computed, onMounted, ref, watch } from "vue";
 import EventCard from "@/components/Admin/EventCard.vue";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-
 type Season = "winter" | "spring" | "summer" | "autumn";
 const seasons: Season[] = ["winter", "spring", "summer", "autumn"];
+
 type EventSummary = {
   name: string;
   slug: string;
@@ -210,6 +213,8 @@ type EventSummary = {
   startTime: string;
   endTime: string;
   season: Season | null;
+  galleryVisible: boolean;
+  showCoverImage: boolean;
   coverUrl: string | null;
 };
 type EventImage = { id: string; url: string | null; isCover: boolean };
@@ -222,6 +227,8 @@ type EditableEvent = {
   startTime: string;
   endTime: string;
   season: Season | "";
+  galleryVisible: boolean;
+  showCoverImage: boolean;
 };
 type UploadStatus = { name: string; state: "pending" | "uploading" | "uploaded" | "failed"; message?: string };
 
@@ -251,6 +258,7 @@ const deletingEventSlug = ref("");
 const deletingImageId = ref("");
 const settingCoverImageId = ref("");
 const savingEventSlug = ref("");
+const reorderingImagesSlug = ref("");
 const lastSavedEventSlug = ref("");
 const eventSaveRevision = ref(0);
 
@@ -290,10 +298,11 @@ async function loadEvents() {
   loadingEvents.value = true;
   error.value = "";
   try {
-    const response = await request("/api/events");
+    const headers = { authorization: `Bearer ${apiKey.value}` };
+    const response = await request("/api/events?includeHidden=true", { headers });
     const body = await response.json() as { events: EventSummary[] };
     events.value = await Promise.all(body.events.map(async (event) => {
-      const detailResponse = await request(`/api/events/${encodeURIComponent(event.slug)}`);
+      const detailResponse = await request(`/api/events/${encodeURIComponent(event.slug)}?includeHidden=true`, { headers });
       const detail = await detailResponse.json() as EventDetail;
       return { ...event, images: detail.images };
     }));
@@ -315,7 +324,9 @@ async function loadSelectedEvent() {
   selectedEventSeason.value = "";
   error.value = "";
   try {
-    const response = await request(`/api/events/${encodeURIComponent(selectedSlug.value)}`);
+    const response = await request(`/api/events/${encodeURIComponent(selectedSlug.value)}?includeHidden=true`, {
+      headers: { authorization: `Bearer ${apiKey.value}` },
+    });
     selectedEvent.value = await response.json() as EventDetail;
     selectedEventSeason.value = selectedEvent.value.event.season || "";
   } catch (caught) {
@@ -336,6 +347,8 @@ async function saveEvent(edit: EditableEvent) {
         startTime: edit.startTime,
         endTime: edit.endTime,
         season: edit.season || null,
+        galleryVisible: edit.galleryVisible,
+        showCoverImage: edit.showCoverImage,
       }),
     });
     await loadEvents();
@@ -350,6 +363,26 @@ async function saveEvent(edit: EditableEvent) {
   }
 }
 
+
+async function reorderImages(event: AdminEvent, imageIds: string[]) {
+  error.value = "";
+  notice.value = "";
+  reorderingImagesSlug.value = event.slug;
+  try {
+    await request(`/api/events/${encodeURIComponent(event.slug)}/images/order`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", authorization: `Bearer ${apiKey.value}` },
+      body: JSON.stringify({ imageIds }),
+    });
+    await loadEvents();
+    if (selectedSlug.value === event.slug) await loadSelectedEvent();
+    notice.value = "Image order saved.";
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : "Unable to reorder images.";
+  } finally {
+    reorderingImagesSlug.value = "";
+  }
+}
 
 async function deleteImage(event: AdminEvent, image: EventImage) {
   if (!window.confirm(`Delete this image from "${event.name}"? This cannot be undone.`)) return;
