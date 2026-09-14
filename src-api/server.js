@@ -22,10 +22,11 @@ function createStorageOrNull() {
     const storage = createStorage();
     logger.info("Storage driver initialized successfully");
     return storage;
-  } catch {
+  } catch (error) {
     logger.warn(
       "S3 Storage unconfigured; image upload/deletion routes will be disabled",
     );
+    logger.error(`Failed to initialize storage driver: ${error.message}`);
     return null;
   }
 }
