@@ -1,4 +1,5 @@
 <template>
+  <EventCountdown />
   <Hero />
   <Quicklook />
   <Games />
@@ -13,6 +14,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
 import { useHead } from "@unhead/vue";
+import EventCountdown from "../components/LandingPage/EventCountdown.vue";
 import Hero from "../components/LandingPage/Hero.vue";
 import Games from "../components/LandingPage/Games.vue";
 import Reviews from "../components/LandingPage/Reviews.vue";
