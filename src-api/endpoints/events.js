@@ -181,6 +181,9 @@ export default function registerEvents(app, { db, storage }) {
     INSERT INTO images (id, event_id, storage_key, content_type, size_bytes)
     VALUES (?, ?, ?, ?, ?)
   `);
+  const countImagesForEvent = db.prepare(
+    `SELECT COUNT(*) AS count FROM images WHERE event_id = ?`,
+  );
   const listImagesForEvent = db.prepare(`
     SELECT id, storage_key AS storageKey, content_type AS contentType, size_bytes AS sizeBytes, created_at AS createdAt
     FROM images WHERE event_id = ?
@@ -428,12 +431,14 @@ export default function registerEvents(app, { db, storage }) {
         typeof req.query.filename === "string" ? req.query.filename : "";
       const id = generateImageId(filenameHint);
       const storageKey = keyForImage(event.slug, id);
+      const hasExistingImages = Number(countImagesForEvent.get(event.id).count) > 0;
 
       try {
         const imageUrl = await storage.putImage(storageKey, body, contentType);
         insertImage.run(id, event.id, storageKey, contentType, body.length);
 
-        const makeCover = req.query.cover === "true" || !event.coverImageId;
+        const makeCover =
+          req.query.cover === "true" || (!event.coverImageId && !hasExistingImages);
         if (makeCover) setEventCover.run(id, event.id);
 
         logger.info(
@@ -478,6 +483,30 @@ export default function registerEvents(app, { db, storage }) {
     }
   });
 
+  app.patch("/images/:id/cover", (req, res) => {
+    if (!isAuthorizedUploader(req)) {
+      res.status(401).json({
+        error: "Missing or invalid upload credentials.",
+      });
+      return;
+    }
+
+    const id = req.params.id;
+    if (!isValidPathSegment(id)) {
+      res.status(400).json({ error: "Invalid image id." });
+      return;
+    }
+
+    const image = findImageById.get(id);
+    if (!image) {
+      res.status(404).json({ error: "Image not found." });
+      return;
+    }
+
+    setEventCover.run(image.id, image.eventId);
+    logger.info(`Set image ${id} as event cover`);
+    res.json({ image: { id, isCover: true } });
+  });
   app.delete("/images/:id", async (req, res) => {
     if (!storage) {
       logger.error("Image deletion rejected: storage is not configured");

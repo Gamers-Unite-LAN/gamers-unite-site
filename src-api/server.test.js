@@ -385,6 +385,12 @@ test("uploads images to an event, auto-assigns the first as cover, and lists the
     const second = (await uploadTwo.json()).image;
     assert.equal(second.isCover, false);
 
+    const setCover = await fetch(`${baseUrl}/images/${second.id}/cover`, {
+      method: "PATCH",
+      headers: authed(),
+    });
+    assert.equal(setCover.status, 200);
+
     const eventDetailResponse = await fetch(`${baseUrl}/events/${event.slug}`);
     const { event: eventDetails, images } = await eventDetailResponse.json();
     assert.deepEqual(
@@ -392,16 +398,59 @@ test("uploads images to an event, auto-assigns the first as cover, and lists the
       [first.id, second.id],
     );
     assert.equal(eventDetails.season, "summer");
-    assert.equal(images.find((img) => img.id === first.id).isCover, true);
+    assert.equal(images.find((img) => img.id === first.id).isCover, false);
+    assert.equal(images.find((img) => img.id === second.id).isCover, true);
 
     const list = await fetch(`${baseUrl}/events`);
     const { events } = await list.json();
     assert.equal(events[0].season, "summer");
     assert.equal(
       events[0].coverUrl,
-      `https://images.example/images/${event.slug}/${first.id}`,
+      `https://images.example/images/${event.slug}/${second.id}`,
     );
     assert.equal(storage.objects.size, 2);
+  });
+});
+
+test("does not auto-assign a cover after an existing cover is deleted", async () => {
+  await withServer(async ({ baseUrl }) => {
+    const createEvent = await fetch(`${baseUrl}/events`, {
+      method: "POST",
+      headers: authed({ "content-type": "application/json" }),
+      body: JSON.stringify({
+        name: "Existing Images LAN",
+        eventDate: "2026-11-01",
+        season: "autumn",
+      }),
+    });
+    const { event } = await createEvent.json();
+
+    const firstUpload = await fetch(`${baseUrl}/events/${event.slug}/images`, {
+      method: "POST",
+      headers: authed({ "content-type": "image/png" }),
+      body: Buffer.from("first-image"),
+    });
+    const firstImage = (await firstUpload.json()).image;
+
+    const existingUpload = await fetch(`${baseUrl}/events/${event.slug}/images`, {
+      method: "POST",
+      headers: authed({ "content-type": "image/png" }),
+      body: Buffer.from("existing-image"),
+    });
+    assert.equal((await existingUpload.json()).image.isCover, false);
+
+    const remove = await fetch(`${baseUrl}/images/${firstImage.id}`, {
+      method: "DELETE",
+      headers: authed(),
+    });
+    assert.equal(remove.status, 204);
+
+    const secondUpload = await fetch(`${baseUrl}/events/${event.slug}/images`, {
+      method: "POST",
+      headers: authed({ "content-type": "image/png" }),
+      body: Buffer.from("second-image"),
+    });
+    assert.equal((await secondUpload.json()).image.isCover, false);
   });
 });
 

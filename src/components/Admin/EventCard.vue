@@ -30,17 +30,20 @@ const props = withDefaults(defineProps<{
   savedRevision?: number;
   deleting?: boolean;
   deletingImageId?: string;
+  settingCoverImageId?: string;
 }>(), {
   saving: false,
   savedRevision: 0,
   deleting: false,
   deletingImageId: "",
+  settingCoverImageId: "",
 });
 
 const emit = defineEmits<{
   (event: "save", edit: EditableEvent): void;
   (event: "delete-event"): void;
   (event: "delete-image", image: EventImage): void;
+  (event: "set-cover", image: EventImage): void;
 }>();
 
 const draft = ref<EditableEvent | null>(null);
@@ -166,9 +169,19 @@ watch(
           <div v-else class="flex aspect-square items-center justify-center p-3 text-center text-xs text-muted-foreground">Image unavailable</div>
           <span v-if="image.isCover" class="absolute left-2 top-2 rounded-md bg-background/90 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">Cover</span>
           <button
+            v-if="!image.isCover"
+            type="button"
+            class="absolute inset-x-1 bottom-1 rounded-md bg-black/75 px-2 py-1.5 text-[10px] font-bold text-white transition hover:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="!!settingCoverImageId || deletingImageId === image.id"
+            :aria-label="`Set image as cover for ${event.name}`"
+            @click.stop="emit('set-cover', image)"
+          >
+            {{ settingCoverImageId === image.id ? "Setting…" : "Set cover" }}
+          </button>
+          <button
             type="button"
             class="absolute right-2 top-2 inline-flex rounded-md bg-black/75 p-1.5 text-white opacity-100 transition hover:bg-destructive sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-50"
-            :disabled="deletingImageId === image.id"
+            :disabled="deletingImageId === image.id || !!settingCoverImageId"
             :aria-label="`Delete image from ${event.name}`"
             @click.stop="emit('delete-image', image)"
           >

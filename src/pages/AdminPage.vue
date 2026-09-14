@@ -133,7 +133,7 @@
               <input id="images" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif"
                 :disabled="!selectedSlug || uploading" class="w-full" @change="setFiles" />
             </div>
-            <div v-if="files.length">
+            <div v-if="files.length && selectedEvent && selectedEvent.images.length === 0">
               <label for="cover-file" class="mb-2 block text-sm font-bold">Cover image</label>
               <select id="cover-file" v-model="coverFileIndex" class="w-full rounded-lg border bg-background px-3 py-2">
                 <option v-for="(file, index) in files" :key="`${file.name}-${index}`" :value="index">{{ file.name }}
@@ -141,6 +141,7 @@
               </select>
               <p class="mt-2 text-sm text-muted-foreground">Selected image becomes event cover.</p>
             </div>
+            <p v-else-if="files.length && selectedEvent?.images.length" class="text-sm text-muted-foreground">Existing cover image will be kept. Use Set cover on an event card to change it.</p>
             <button type="button" :disabled="!selectedSlug || !files.length || uploading"
               class="rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground disabled:opacity-50"
               @click="uploadImages">
@@ -175,12 +176,13 @@
           :event="event"
           :seasons="seasons"
           :saving="savingEventSlug === event.slug"
-          :saved-revision="lastSavedEventSlug === event.slug ? eventSaveRevision : 0"
           :deleting="deletingEventSlug === event.slug"
           :deleting-image-id="deletingImageId"
+          :setting-cover-image-id="settingCoverImageId"
           @save="saveEvent"
           @delete-event="deleteEvent(event)"
           @delete-image="deleteImage(event, $event)"
+          @set-cover="setCoverImage(event, $event)"
         />
         </div>
       </section>
@@ -247,6 +249,7 @@ const notice = ref("");
 const uploadStatuses = ref<UploadStatus[]>([]);
 const deletingEventSlug = ref("");
 const deletingImageId = ref("");
+const settingCoverImageId = ref("");
 const savingEventSlug = ref("");
 const lastSavedEventSlug = ref("");
 const eventSaveRevision = ref(0);
@@ -368,7 +371,26 @@ async function deleteImage(event: AdminEvent, image: EventImage) {
   } finally {
     deletingImageId.value = "";
   }
+}
 
+async function setCoverImage(event: AdminEvent, image: EventImage) {
+  if (image.isCover) return;
+  error.value = "";
+  notice.value = "";
+  settingCoverImageId.value = image.id;
+  try {
+    await request(`/api/images/${encodeURIComponent(image.id)}/cover`, {
+      method: "PATCH",
+      headers: { authorization: `Bearer ${apiKey.value}` },
+    });
+    await loadEvents();
+    if (selectedSlug.value === event.slug) await loadSelectedEvent();
+    notice.value = "Cover image updated.";
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : "Unable to update cover image.";
+  } finally {
+    settingCoverImageId.value = "";
+  }
 }
 async function deleteEvent(event: AdminEvent) {
   if (!window.confirm(`Delete "${event.name}" and all ${event.images.length} image${event.images.length === 1 ? "" : "s"}? This cannot be undone.`)) return;
@@ -460,11 +482,13 @@ async function uploadImages() {
   notice.value = "";
   uploading.value = true;
   let uploaded = 0;
+  const canSetCover = selectedEvent.value?.images.length === 0;
 
   for (const [index, file] of files.value.entries()) {
     uploadStatuses.value[index] = { name: file.name, state: "uploading" };
     try {
-      await request(`/api/events/${encodeURIComponent(selectedSlug.value)}/images?filename=${encodeURIComponent(file.name)}${index === coverFileIndex.value ? "&cover=true" : ""}`, {
+      const coverQuery = canSetCover && index === coverFileIndex.value ? "&cover=true" : "";
+      await request(`/api/events/${encodeURIComponent(selectedSlug.value)}/images?filename=${encodeURIComponent(file.name)}${coverQuery}`, {
         method: "POST",
         headers: { "content-type": file.type, authorization: `Bearer ${apiKey.value}` },
         body: file,
@@ -479,8 +503,8 @@ async function uploadImages() {
       };
     }
   }
-
   uploading.value = false;
+  await loadEvents();
   await loadSelectedEvent();
   notice.value = `${uploaded} of ${files.value.length} image${files.value.length === 1 ? "" : "s"} uploaded.`;
 }
