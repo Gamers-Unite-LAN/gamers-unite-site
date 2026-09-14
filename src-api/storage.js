@@ -30,18 +30,23 @@ export function createStorage({
   if (!publicUrlBase)
     throw new Error("PUBLIC_ASSET_URL_BASE is required to build image URLs.");
 
-  const client = new S3Client({
-    endpoint,
-    region,
-    credentials:
-      accessKeyId && secretAccessKey
-        ? { accessKeyId, secretAccessKey }
-        : undefined,
-    // MinIO and most non-AWS S3-compatible providers need path-style URLs
-    // (https://host/bucket/key) rather than virtual-hosted style. AWS itself
-    // is fine with either, so this default is safe everywhere.
-    forcePathStyle,
-  });
+  let client;
+  try {
+    client = new S3Client({
+      endpoint,
+      region,
+      credentials:
+        accessKeyId && secretAccessKey
+          ? { accessKeyId, secretAccessKey }
+          : undefined,
+      // MinIO and most non-AWS S3-compatible providers need path-style URLs
+      // (https://host/bucket/key) rather than virtual-hosted style. AWS itself
+      // is fine with either, so this default is safe everywhere.
+      forcePathStyle,
+    });
+  } catch (error) {
+    throw new Error(`Failed to create S3 client: ${error.message}`);
+  }
 
   function publicUrl(key) {
     return `${publicUrlBase.replace(/\/+$/, "")}/${key}`;
