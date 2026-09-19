@@ -37,6 +37,7 @@ Admin access uses Discord OAuth2 authorization-code login with the `identify` sc
 | `SESSION_TTL_MS` | Session lifetime in milliseconds (default: 7 days) |
 
 The admin page starts login at `/api/auth/discord`. The API exchanges the code server-side, stores only a hash of the session token in SQLite, and sends the browser an `HttpOnly` session cookie. `DISCORD_ADMIN_USER_IDS` is checked on every admin request, so changing the variable takes effect after the API restarts. `POST /api/auth/logout` clears the session.
+Do not copy the Discord OAuth2 URL Generator output into `DISCORD_REDIRECT_URI`; that generated URL is what the API builds at runtime. The environment variable must contain only the registered callback URL, such as `http://localhost:5173/api/auth/discord/callback` during local development.
 
 ## Endpoints
 
