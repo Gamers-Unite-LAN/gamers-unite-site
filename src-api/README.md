@@ -4,7 +4,7 @@ Minimal standalone Node API for site services. First service: game recommendatio
 
 ## Requirements
 
-Node.js 24 or newer. This API uses built-in `node:http` and `node:sqlite`; no packages are required.
+Node.js 24 or newer. The API uses built-in `node:http` and `node:sqlite` plus the dependencies declared in `src-api/package.json`.
 
 ## Run
 
@@ -23,6 +23,22 @@ API listens on `http://localhost:3000` by default. Set `PORT` to change it.
 
 Production permits browser requests only from `https://gamersunitelan.com`. `npm run api:dev` additionally permits `http://localhost:*` and `http://127.0.0.1:*`. Keep `NODE_ENV` unset or set it to `production` for deployed API processes.
 
+## Discord authentication
+
+Admin access uses Discord OAuth2 authorization-code login with the `identify` scope. Create a Discord application, add `DISCORD_REDIRECT_URI` to its OAuth2 redirect URLs, and configure these variables before starting the API:
+
+| Variable | Purpose |
+| --- | --- |
+| `DISCORD_CLIENT_ID` | Discord application client ID |
+| `DISCORD_CLIENT_SECRET` | Discord application client secret |
+| `DISCORD_REDIRECT_URI` | Registered callback URL, e.g. `https://gamersunitelan.com/api/auth/discord/callback` |
+| `DISCORD_FRONTEND_URL` | Frontend URL to return to after login, e.g. `https://gamersunitelan.com` |
+| `DISCORD_ADMIN_USER_IDS` | Comma-separated Discord user IDs allowed to administer the gallery |
+| `SESSION_TTL_MS` | Session lifetime in milliseconds (default: 7 days) |
+
+The admin page starts login at `/api/auth/discord`. The API exchanges the code server-side, stores only a hash of the session token in SQLite, and sends the browser an `HttpOnly` session cookie. `DISCORD_ADMIN_USER_IDS` is checked on every admin request, so changing the variable takes effect after the API restarts. `POST /api/auth/logout` clears the session.
+Do not copy the Discord OAuth2 URL Generator output into `DISCORD_REDIRECT_URI`; that generated URL is what the API builds at runtime. The environment variable must contain only the registered callback URL, such as `http://localhost:5173/api/auth/discord/callback` during local development.
+
 ## Endpoints
 
 ```sh
@@ -33,7 +49,7 @@ curl -X POST http://localhost:3000/api/game-recommendations \
   -d '{"gameName":"Team Fortress 2","description":"Great LAN game","recommendedBy":"Alex"}'
 ```
 
-`POST /api/game-recommendations` requires `gameName`; `description` and `recommendedBy` are optional. Duplicate ASCII names are rejected case-insensitively. Recommendation submissions are limited to 30 requests per IP per minute by default. Set `RATE_LIMIT_MAX` or `RATE_LIMIT_WINDOW_MS` to change this.
+`POST /api/game-recommendations` requires `gameName`; `description` and `recommendedBy` are optional. Duplicate ASCII names are rejected case-insensitively. All API requests are limited to 30 requests per IP per minute by default. Set `RATE_LIMIT_MAX` or `RATE_LIMIT_WINDOW_MS` to change this. Requests over the limit return `429` with a `Retry-After` header.
 
 ## Persistence
 
@@ -58,7 +74,7 @@ curl http://localhost:3000/api/events
 # Create an event
 curl -X POST http://localhost:3000/api/events \
   -H 'Content-Type: application/json' \
-  -H 'Authorization: Bearer <UPLOAD_API_KEY>' \
+  -H 'Cookie: gul_session=<DISCORD_SESSION_COOKIE>' \
   -d '{"name":"Winter LAN 2026","eventDate":"2026-01-17","season":"winter"}'
 
 # Update event details or gallery visibility settings
@@ -66,38 +82,38 @@ curl -X POST http://localhost:3000/api/events \
 # `showCoverImage` omits the cover from public event photos.
 curl -X PATCH http://localhost:3000/api/events/winter-lan-2026 \
   -H 'Content-Type: application/json' \
-  -H 'Authorization: Bearer <UPLOAD_API_KEY>' \
+  -H 'Cookie: gul_session=<DISCORD_SESSION_COOKIE>' \
   -d '{"season":"winter","galleryVisible":true,"showCoverImage":true}'
 
 # Admin-only list/detail access to hidden events
 curl 'http://localhost:3000/api/events?includeHidden=true' \
-  -H 'Authorization: Bearer <UPLOAD_API_KEY>'
+  -H 'Cookie: gul_session=<DISCORD_SESSION_COOKIE>'
 curl 'http://localhost:3000/api/events/winter-lan-2026?includeHidden=true' \
-  -H 'Authorization: Bearer <UPLOAD_API_KEY>'
+  -H 'Cookie: gul_session=<DISCORD_SESSION_COOKIE>'
 
 # Upload a photo to an event. The first upload becomes the cover
 # automatically; pass ?cover=true to make a later upload the cover instead.
 curl -X POST 'http://localhost:3000/api/events/winter-lan-2026/images?filename=hall.jpg' \
   -H 'Content-Type: image/jpeg' \
-  -H 'Authorization: Bearer <UPLOAD_API_KEY>' \
+  -H 'Cookie: gul_session=<DISCORD_SESSION_COOKIE>' \
   --data-binary @hall.jpg
 
 # Delete a single image
 curl -X DELETE http://localhost:3000/api/images/<id> \
-  -H 'Authorization: Bearer <UPLOAD_API_KEY>'
+  -H 'Cookie: gul_session=<DISCORD_SESSION_COOKIE>'
 
 # Set the complete image display order
 curl -X PATCH http://localhost:3000/api/events/winter-lan-2026/images/order \
   -H 'Content-Type: application/json' \
-  -H 'Authorization: Bearer <UPLOAD_API_KEY>' \
+  -H 'Cookie: gul_session=<DISCORD_SESSION_COOKIE>' \
   -d '{"imageIds":["<image-id-2>","<image-id-1>"]}'
 
 # Delete an event and all of its images (DB rows and S3 objects)
 curl -X DELETE http://localhost:3000/api/events/winter-lan-2026 \
-  -H 'Authorization: Bearer <UPLOAD_API_KEY>'
+  -H 'Cookie: gul_session=<DISCORD_SESSION_COOKIE>'
 ```
 
-`GET /api/events` and `GET /api/events/:slug` are public and omit hidden events/images. Authorized admin requests may add `includeHidden=true` to manage hidden events. Creating and updating events, reordering/uploading images, and deleting either require `Authorization: Bearer <UPLOAD_API_KEY>`. Allowed image types: PNG, JPEG, WebP, GIF. Max upload size is 8MB by default (`MAX_IMAGE_SIZE`, in bytes). If storage env vars aren't set, image upload routes return `503`; event/game-recommendation routes keep working normally.
+`GET /api/events` and `GET /api/events/:slug` are public and omit hidden events/images. Admin requests may add `includeHidden=true` when authenticated through Discord and included in `DISCORD_ADMIN_USER_IDS`. Creating and updating events, reordering/uploading images, and deleting either require an admin Discord session. Allowed image types: PNG, JPEG, WebP, GIF. Max upload size is 8MB by default (`MAX_IMAGE_SIZE`, in bytes). If storage env vars aren't set, image upload routes return `503`; event/game-recommendation routes keep working normally.
 
 ### Environment variables
 
@@ -109,8 +125,9 @@ curl -X DELETE http://localhost:3000/api/events/winter-lan-2026 \
 | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | Credentials for the bucket |
 | `PUBLIC_ASSET_URL_BASE` | Public base URL images are served from, e.g. `https://images.gamersunitelan.com/gul-images` |
 | `S3_FORCE_PATH_STYLE` | Defaults to `true` (required by MinIO and most non-AWS providers). Set to `false` for AWS if you prefer virtual-hosted-style URLs |
-| `UPLOAD_API_KEY` | Shared secret required to create/upload/delete events and images |
 | `MAX_IMAGE_SIZE` | Max upload size in bytes (default 8MB) |
+| `RATE_LIMIT_MAX` | API requests allowed per IP per window (default 30) |
+| `RATE_LIMIT_WINDOW_MS` | Rate-limit window in milliseconds (default 60000) |
 
 ### Self-hosting with MinIO on Coolify
 

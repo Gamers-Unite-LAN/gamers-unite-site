@@ -12,6 +12,24 @@ export function createDatabase(databasePath = process.env.DATABASE_PATH || defau
   const db = new DatabaseSync(path);
   db.exec("PRAGMA foreign_keys = ON");
   db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      discord_id TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      global_name TEXT,
+      avatar TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS sessions (
+      token_hash TEXT PRIMARY KEY,
+      discord_id TEXT NOT NULL,
+      expires_at INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (discord_id) REFERENCES users (discord_id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS sessions_expires_at_idx ON sessions (expires_at);
+  `);
+  db.exec(`
     CREATE TABLE IF NOT EXISTS game_recommendations (
       id INTEGER PRIMARY KEY,
       game_name TEXT NOT NULL COLLATE NOCASE UNIQUE,
