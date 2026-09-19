@@ -128,7 +128,56 @@ test("limits requests across API endpoints per client", async () => {
     db.close();
   }
 });
+test("reports authenticated Discord users and admin status", async () => {
+  await withServer(async ({ baseUrl }) => {
+    const authenticated = await fetch(`${baseUrl}/auth/me`, {
+      headers: authed(),
+    });
+    assert.deepEqual(await authenticated.json(), {
+      authenticated: true,
+      admin: true,
+      user: {
+        id: "test-admin",
+        username: "Test Admin",
+        globalName: null,
+        avatar: null,
+      },
+    });
 
+    const anonymous = await fetch(`${baseUrl}/auth/me`);
+    assert.deepEqual(await anonymous.json(), {
+      authenticated: false,
+      admin: false,
+      user: null,
+    });
+  });
+});
+
+test("denies authenticated Discord users outside the admin allowlist", async () => {
+  const db = createDatabase(":memory:");
+  const previousAdminIds = process.env.DISCORD_ADMIN_USER_IDS;
+  process.env.DISCORD_ADMIN_USER_IDS = "another-user";
+  const auth = createAuth(db);
+  const session = auth.createSession({ id: "regular-user", username: "Regular User" });
+  const server = createApiServer(db, createRateLimiter(), null, auth);
+  await new Promise((resolve) => server.listen(0, resolve));
+
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/events`, {
+      method: "POST",
+      headers: {
+        cookie: `gul_session=${session.token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ name: "Winter LAN", eventDate: "2026-01-17", season: "winter" }),
+    });
+    assert.equal(response.status, 403);
+  } finally {
+    process.env.DISCORD_ADMIN_USER_IDS = previousAdminIds;
+    await new Promise((resolve) => server.close(resolve));
+    db.close();
+  }
+});
 test("stores, lists, and rejects duplicate recommendations", async () => {
   const db = createDatabase(":memory:");
   const server = createApiServer(db, createRateLimiter(), null);
