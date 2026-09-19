@@ -352,13 +352,12 @@ async function reorderImages(event: AdminEvent, imageIds: string[]) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ imageIds }),
     });
-    await loadEvents();
-    if (selectedSlug.value === event.slug) await loadSelectedEvent();
+    const imagesById = new Map(event.images.map((image) => [image.id, image]));
+    event.images = imageIds.map((id) => imagesById.get(id) as EventImage);
+    if (selectedEvent.value?.event.slug === event.slug) selectedEvent.value.images = event.images;
     notice.value = "Image order saved.";
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : "Unable to reorder images.";
-    await loadEvents();
-    if (selectedSlug.value === event.slug) await loadSelectedEvent();
   } finally {
     reorderingImagesSlug.value = "";
   }
@@ -394,8 +393,11 @@ async function setCoverImage(event: AdminEvent, image: EventImage) {
     await request(`/api/images/${encodeURIComponent(image.id)}/cover`, {
       method: "PATCH",
     });
-    await loadEvents();
-    if (selectedSlug.value === event.slug) await loadSelectedEvent();
+    event.images = event.images.map((candidate) => ({
+      ...candidate,
+      isCover: candidate.id === image.id,
+    }));
+    if (selectedEvent.value?.event.slug === event.slug) selectedEvent.value.images = event.images;
     notice.value = "Cover image updated.";
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : "Unable to update cover image.";
