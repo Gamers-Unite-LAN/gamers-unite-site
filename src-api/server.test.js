@@ -102,6 +102,27 @@ test("limits recommendations per client within its window", () => {
   assert.deepEqual(limit("127.0.0.1", 2), { allowed: false, retryAfter: 1 });
   assert.equal(limit("127.0.0.1", 1_000).allowed, true);
 });
+test("limits requests across API endpoints per client", async () => {
+  const db = createDatabase(":memory:");
+  const server = createApiServer(db, createRateLimiter(1, 1_000), null);
+  await new Promise((resolve) => server.listen(0, resolve));
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    const first = await fetch(`${baseUrl}/health`);
+    assert.equal(first.status, 200);
+
+    const second = await fetch(`${baseUrl}/events`);
+    assert.equal(second.status, 429);
+    assert.equal(second.headers.get("retry-after"), "1");
+    assert.deepEqual(await second.json(), {
+      error: "Too many requests. Try again shortly.",
+    });
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    db.close();
+  }
+});
 
 test("stores, lists, and rejects duplicate recommendations", async () => {
   const db = createDatabase(":memory:");

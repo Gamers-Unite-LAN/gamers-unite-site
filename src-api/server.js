@@ -55,8 +55,25 @@ export function createApiServer(
     next();
   });
 
+  // Rate limit every API request after CORS preflight handling.
+  app.use((req, res, next) => {
+    const client = req.socket.remoteAddress || "unknown";
+    const limit = rateLimit(client);
+    if (limit.allowed) {
+      next();
+      return;
+    }
+
+    logger.warn(`Rate limit exceeded for ${client}`, {
+      path: req.originalUrl,
+      retryAfter: limit.retryAfter,
+    });
+    res.set("retry-after", String(limit.retryAfter));
+    res.status(429).json({ error: "Too many requests. Try again shortly." });
+  });
+
   // Auto-import all endpoint modules from ./endpoints
-  const context = { db, rateLimit, storage };
+  const context = { db, storage };
   loadEndpoints(app, context);
 
   // Catch-all 404 handler for unmatched routes

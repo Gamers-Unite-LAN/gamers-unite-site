@@ -43,7 +43,7 @@ export function validateGameRecommendation(input) {
   };
 }
 
-export default function registerGameRecommendations(app, { db, rateLimit }) {
+export default function registerGameRecommendations(app, { db }) {
   const listRecommendations = db.prepare(`
     SELECT id, game_name AS gameName, description, recommended_by AS recommendedBy, created_at AS createdAt
     FROM game_recommendations
@@ -65,18 +65,6 @@ export default function registerGameRecommendations(app, { db, rateLimit }) {
 
   app.post("/game-recommendations", (req, res) => {
     const client = req.socket.remoteAddress || "unknown";
-    const limit = rateLimit(client);
-    if (!limit.allowed) {
-      logger.warn(
-        `Rate limit exceeded for game recommendation from ${client}`,
-        { retryAfter: limit.retryAfter },
-      );
-      res.set("retry-after", String(limit.retryAfter));
-      res
-        .status(429)
-        .json({ error: "Too many recommendations. Try again shortly." });
-      return;
-    }
 
     requireJson(req, res, () => {
       const validation = validateGameRecommendation(req.body);

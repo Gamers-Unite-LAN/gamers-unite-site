@@ -33,7 +33,7 @@ curl -X POST http://localhost:3000/api/game-recommendations \
   -d '{"gameName":"Team Fortress 2","description":"Great LAN game","recommendedBy":"Alex"}'
 ```
 
-`POST /api/game-recommendations` requires `gameName`; `description` and `recommendedBy` are optional. Duplicate ASCII names are rejected case-insensitively. Recommendation submissions are limited to 30 requests per IP per minute by default. Set `RATE_LIMIT_MAX` or `RATE_LIMIT_WINDOW_MS` to change this.
+`POST /api/game-recommendations` requires `gameName`; `description` and `recommendedBy` are optional. Duplicate ASCII names are rejected case-insensitively. All API requests are limited to 30 requests per IP per minute by default. Set `RATE_LIMIT_MAX` or `RATE_LIMIT_WINDOW_MS` to change this. Requests over the limit return `429` with a `Retry-After` header.
 
 ## Persistence
 
