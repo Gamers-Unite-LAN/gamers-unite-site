@@ -1,10 +1,14 @@
 <template>
   <main class="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
     <header class="mb-8 space-y-2">
-      <p class="text-sm font-bold uppercase tracking-widest text-primary">Admin</p>
-      <h1 v-if="!isValidApiKey" class="text-4xl font-extrabold tracking-tight">Enter API key</h1>
-      <h1 v-if="isValidApiKey" class="text-4xl font-extrabold tracking-tight">Event gallery</h1>
-      <p v-if="isValidApiKey" class="text-muted-foreground">Create events and upload their photos.</p>
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <p class="text-sm font-bold uppercase tracking-widest text-primary">Admin</p>
+          <h1 class="text-4xl font-extrabold tracking-tight">{{ isAdmin ? "Event gallery" : "Admin sign-in" }}</h1>
+          <p v-if="isAdmin" class="text-muted-foreground">Create events and upload their photos.</p>
+        </div>
+        <button v-if="isAdmin" type="button" class="rounded-lg border px-3 py-2 text-sm font-bold" @click="logout">Sign out</button>
+      </div>
     </header>
 
     <Accordion type="single" collapsible class="mb-8 rounded-2xl">
@@ -38,31 +42,21 @@
       </AccordionItem>
     </Accordion>
 
-    <template v-if="!isValidApiKey">
-      <form class="mt-5 space-y-4" @submit.prevent="validateApiKey">
-        <div>
-          <label for="api-key" class="mb-2 block text-sm font-bold">Validate API key</label>
-          <input id="api-key" v-model="apiKey" type="password" required autocomplete="off"
-            class="w-full rounded-lg border bg-background px-3 py-2" />
-        </div>
-
-        <button type="submit" :disabled="validating"
-          class="rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground disabled:opacity-50">
-          {{ validating ? "Validating…" : "Validate API key" }}
-        </button>
-      </form>
+    <template v-if="!isAdmin">
+      <div class="mt-5 space-y-4">
+        <p v-if="authUser" class="text-muted-foreground">Signed in as {{ authUser.globalName || authUser.username }}, but this account is not an administrator.</p>
+        <p v-else class="text-muted-foreground">Sign in with Discord to access event administration.</p>
+        <a v-if="!isAuthenticated" :href="endpoint('/api/auth/discord')" class="inline-flex rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground">
+          {{ authLoading ? "Checking session…" : "Continue with Discord" }}
+        </a>
+        <button v-else type="button" class="rounded-lg border px-4 py-2 font-bold" @click="logout">Sign out</button>
+      </div>
     </template>
-
-    <template v-if="isValidApiKey">
+    <template v-if="isAdmin">
       <div class="grid gap-6 lg:grid-cols-2">
         <section class="rounded-xl border bg-card p-6 shadow-sm">
           <h2 class="text-xl font-bold">Create event</h2>
           <form class="mt-5 space-y-4" @submit.prevent="createEvent">
-            <div>
-              <label for="api-key" class="mb-2 block text-sm font-bold">Upload API key</label>
-              <input id="api-key" v-model="apiKey" disabled type="password" required autocomplete="off"
-                class="w-full rounded-lg border bg-background px-3 py-2 opacity-50" />
-            </div>
             <div>
               <label for="event-name" class="mb-2 block text-sm font-bold">Event name</label>
               <input id="event-name" v-model="eventName" type="text" required maxlength="120"
@@ -233,9 +227,11 @@ type EditableEvent = {
 type UploadStatus = { name: string; state: "pending" | "uploading" | "uploaded" | "failed"; message?: string };
 
 const apiUrl = ref(import.meta.env.DEV ? "" : import.meta.env.VITE_API_URL || "");
-const apiKey = ref("");
-const isValidApiKey = ref(false);
-const validating = ref(false);
+type AuthUser = { id: string; username: string; globalName: string | null; avatar: string | null };
+const authUser = ref<AuthUser | null>(null);
+const isAuthenticated = ref(false);
+const isAdmin = ref(false);
+const authLoading = ref(true);
 const eventName = ref("");
 const eventDate = ref("");
 const eventStartTime = ref("10:00");
@@ -272,37 +268,21 @@ function endpoint(path: string) {
 }
 
 async function request(path: string, options: RequestInit = {}) {
-  const response = await fetch(endpoint(path), options);
+  const response = await fetch(endpoint(path), { ...options, credentials: "include" });
   if (response.ok || response.status === 204) return response;
   const body = await response.json().catch(() => null);
   throw new Error(body?.error || `Request failed (${response.status}).`);
 }
 
-async function validateApiKey() {
-  isValidApiKey.value = false;
-  validating.value = true;
-  if (!apiKey.value) return;
-  try {
-    const response = await request("/api/validate", { headers: { authorization: `Bearer ${apiKey.value}` } });
-    const body = await response.json() as { valid: boolean };
-    isValidApiKey.value = body.valid;
-  } catch (caught) {
-    isValidApiKey.value = false;
-    error.value = caught instanceof Error ? caught.message : "Unable to load events.";
-  } finally {
-    validating.value = false;
-  }
-}
 
 async function loadEvents() {
   loadingEvents.value = true;
   error.value = "";
   try {
-    const headers = { authorization: `Bearer ${apiKey.value}` };
-    const response = await request("/api/events?includeHidden=true", { headers });
+    const response = await request("/api/events?includeHidden=true");
     const body = await response.json() as { events: EventSummary[] };
     events.value = await Promise.all(body.events.map(async (event) => {
-      const detailResponse = await request(`/api/events/${encodeURIComponent(event.slug)}?includeHidden=true`, { headers });
+      const detailResponse = await request(`/api/events/${encodeURIComponent(event.slug)}?includeHidden=true`);
       const detail = await detailResponse.json() as EventDetail;
       return { ...event, images: detail.images };
     }));
@@ -324,9 +304,7 @@ async function loadSelectedEvent() {
   selectedEventSeason.value = "";
   error.value = "";
   try {
-    const response = await request(`/api/events/${encodeURIComponent(selectedSlug.value)}?includeHidden=true`, {
-      headers: { authorization: `Bearer ${apiKey.value}` },
-    });
+    const response = await request(`/api/events/${encodeURIComponent(selectedSlug.value)}?includeHidden=true`);
     selectedEvent.value = await response.json() as EventDetail;
     selectedEventSeason.value = selectedEvent.value.event.season || "";
   } catch (caught) {
@@ -340,7 +318,7 @@ async function saveEvent(edit: EditableEvent) {
   try {
     await request(`/api/events/${encodeURIComponent(edit.slug)}`, {
       method: "PATCH",
-      headers: { "content-type": "application/json", authorization: `Bearer ${apiKey.value}` },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({
         name: edit.name,
         eventDate: edit.eventDate,
@@ -371,16 +349,15 @@ async function reorderImages(event: AdminEvent, imageIds: string[]) {
   try {
     await request(`/api/events/${encodeURIComponent(event.slug)}/images/order`, {
       method: "PATCH",
-      headers: { "content-type": "application/json", authorization: `Bearer ${apiKey.value}` },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({ imageIds }),
     });
-    await loadEvents();
-    if (selectedSlug.value === event.slug) await loadSelectedEvent();
+    const imagesById = new Map(event.images.map((image) => [image.id, image]));
+    event.images = imageIds.map((id) => imagesById.get(id) as EventImage);
+    if (selectedEvent.value?.event.slug === event.slug) selectedEvent.value.images = event.images;
     notice.value = "Image order saved.";
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : "Unable to reorder images.";
-    await loadEvents();
-    if (selectedSlug.value === event.slug) await loadSelectedEvent();
   } finally {
     reorderingImagesSlug.value = "";
   }
@@ -394,7 +371,6 @@ async function deleteImage(event: AdminEvent, image: EventImage) {
   try {
     await request(`/api/images/${encodeURIComponent(image.id)}`, {
       method: "DELETE",
-      headers: { authorization: `Bearer ${apiKey.value}` },
     });
     event.images = event.images.filter((candidate) => candidate.id !== image.id);
     if (selectedEvent.value?.event.slug === event.slug) {
@@ -416,10 +392,12 @@ async function setCoverImage(event: AdminEvent, image: EventImage) {
   try {
     await request(`/api/images/${encodeURIComponent(image.id)}/cover`, {
       method: "PATCH",
-      headers: { authorization: `Bearer ${apiKey.value}` },
     });
-    await loadEvents();
-    if (selectedSlug.value === event.slug) await loadSelectedEvent();
+    event.images = event.images.map((candidate) => ({
+      ...candidate,
+      isCover: candidate.id === image.id,
+    }));
+    if (selectedEvent.value?.event.slug === event.slug) selectedEvent.value.images = event.images;
     notice.value = "Cover image updated.";
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : "Unable to update cover image.";
@@ -435,7 +413,6 @@ async function deleteEvent(event: AdminEvent) {
   try {
     await request(`/api/events/${encodeURIComponent(event.slug)}`, {
       method: "DELETE",
-      headers: { authorization: `Bearer ${apiKey.value}` },
     });
     events.value = events.value.filter((candidate) => candidate.slug !== event.slug);
     if (selectedSlug.value === event.slug) {
@@ -460,7 +437,7 @@ async function updateSeason() {
   try {
     await request(`/api/events/${encodeURIComponent(selectedSlug.value)}`, {
       method: "PATCH",
-      headers: { "content-type": "application/json", authorization: `Bearer ${apiKey.value}` },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({ season: selectedEventSeason.value }),
     });
     await loadEvents();
@@ -479,7 +456,7 @@ async function createEvent() {
   try {
     const response = await request("/api/events", {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${apiKey.value}` },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({
         name: eventName.value,
         eventDate: eventDate.value,
@@ -525,7 +502,7 @@ async function uploadImages() {
       const coverQuery = canSetCover && index === coverFileIndex.value ? "&cover=true" : "";
       await request(`/api/events/${encodeURIComponent(selectedSlug.value)}/images?filename=${encodeURIComponent(file.name)}${coverQuery}`, {
         method: "POST",
-        headers: { "content-type": file.type, authorization: `Bearer ${apiKey.value}` },
+        headers: { "content-type": file.type },
         body: file,
       });
       uploadStatuses.value[index] = { name: file.name, state: "uploaded" };
@@ -543,7 +520,33 @@ async function uploadImages() {
   await loadSelectedEvent();
   notice.value = `${uploaded} of ${files.value.length} image${files.value.length === 1 ? "" : "s"} uploaded.`;
 }
+async function loadAuth() {
+  authLoading.value = true;
+  error.value = "";
+  try {
+    const response = await request("/api/auth/me");
+    const body = await response.json() as { authenticated: boolean; admin: boolean; user: AuthUser | null };
+    authUser.value = body.user;
+    isAuthenticated.value = body.authenticated;
+    isAdmin.value = body.admin;
+    if (isAdmin.value) await loadEvents();
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : "Unable to check Discord login.";
+  } finally {
+    authLoading.value = false;
+  }
+}
+
+async function logout() {
+  await request("/api/auth/logout", { method: "POST" });
+  authUser.value = null;
+  isAuthenticated.value = false;
+  isAdmin.value = false;
+  events.value = [];
+  selectedEvent.value = null;
+  selectedSlug.value = "";
+}
 
 watch(selectedSlug, loadSelectedEvent);
-onMounted(loadEvents);
+onMounted(loadAuth);
 </script>

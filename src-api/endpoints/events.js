@@ -13,13 +13,25 @@ import {
   EVENT_DATE_PATTERN,
   EVENT_SEASONS,
   EVENT_TIME_PATTERN,
-  isAuthorizedUploader,
   MAX_EVENT_NAME_LENGTH,
   MAX_IMAGE_SIZE,
   slugify,
 } from "../utils.js";
-function canIncludeHidden(request) {
-  return request.query.includeHidden === "true" && isAuthorizedUploader(request);
+function requireAdmin(request, response, auth) {
+  const user = auth.getUser(request);
+  if (!user) {
+    response.status(401).json({ error: "Discord login required." });
+    return false;
+  }
+  if (!auth.isAdmin(request)) {
+    response.status(403).json({ error: "Administrator access required." });
+    return false;
+  }
+  return true;
+}
+
+function canIncludeHidden(request, auth) {
+  return request.query.includeHidden === "true" && auth.isAdmin(request);
 }
 
 function validateSeason(value) {
@@ -153,7 +165,7 @@ export function validateEvent(input) {
   };
 }
 
-export default function registerEvents(app, { db, storage }) {
+export default function registerEvents(app, { db, storage, auth }) {
   const insertEvent = db.prepare(
     `INSERT INTO events (name, slug, event_date, start_time, end_time, season) VALUES (?, ?, ?, ?, ?, ?)`,
   );
@@ -222,7 +234,7 @@ export default function registerEvents(app, { db, storage }) {
   }
 
   app.get("/events", (req, res) => {
-    const includeHidden = canIncludeHidden(req);
+    const includeHidden = canIncludeHidden(req, auth);
     const rows = listEvents.all().filter((row) => includeHidden || row.galleryVisible);
     res.json({
       events: rows.map((row) => ({
@@ -268,11 +280,7 @@ export default function registerEvents(app, { db, storage }) {
   });
 
   app.post("/events", (req, res) => {
-    if (!isAuthorizedUploader(req)) {
-      logger.warn("Unauthorized attempt to create event", { ip: req.socket.remoteAddress });
-      res.status(401).json({ error: "Missing or invalid upload credentials." });
-      return;
-    }
+    if (!requireAdmin(req, res, auth)) return;
 
     requireJson(req, res, () => {
       const validation = validateEvent(req.body);
@@ -314,10 +322,7 @@ export default function registerEvents(app, { db, storage }) {
   });
 
   app.patch("/events/:slug", (req, res) => {
-    if (!isAuthorizedUploader(req)) {
-      res.status(401).json({ error: "Missing or invalid upload credentials." });
-      return;
-    }
+    if (!requireAdmin(req, res, auth)) return;
 
     requireJson(req, res, () => {
       const event = findEventBySlug.get(req.params.slug);
@@ -359,7 +364,7 @@ export default function registerEvents(app, { db, storage }) {
 
   app.get("/events/:slug", (req, res) => {
     const event = findEventBySlug.get(req.params.slug);
-    const includeHidden = canIncludeHidden(req);
+    const includeHidden = canIncludeHidden(req, auth);
     if (!event || (!includeHidden && !event.galleryVisible)) {
       logger.warn(`Event lookup not found: ${req.params.slug}`);
       res.status(404).json({ error: "Event not found." });
@@ -394,10 +399,7 @@ export default function registerEvents(app, { db, storage }) {
   });
 
   app.patch("/events/:slug/images/order", (req, res) => {
-    if (!isAuthorizedUploader(req)) {
-      res.status(401).json({ error: "Missing or invalid upload credentials." });
-      return;
-    }
+    if (!requireAdmin(req, res, auth)) return;
 
     requireJson(req, res, () => {
       const event = findEventBySlug.get(req.params.slug);
@@ -441,16 +443,7 @@ export default function registerEvents(app, { db, storage }) {
       return;
     }
 
-    if (!isAuthorizedUploader(req)) {
-      logger.warn("Unauthorized attempt to upload image", {
-        ip: req.socket.remoteAddress,
-        slug: req.params.slug,
-      });
-      res.status(401).json({
-        error: "Missing or invalid upload credentials.",
-      });
-      return;
-    }
+    if (!requireAdmin(req, res, auth)) return;
 
     const event = findEventBySlug.get(req.params.slug);
     if (!event) {
@@ -541,12 +534,7 @@ export default function registerEvents(app, { db, storage }) {
   });
 
   app.patch("/images/:id/cover", (req, res) => {
-    if (!isAuthorizedUploader(req)) {
-      res.status(401).json({
-        error: "Missing or invalid upload credentials.",
-      });
-      return;
-    }
+    if (!requireAdmin(req, res, auth)) return;
 
     const id = req.params.id;
     if (!isValidPathSegment(id)) {
@@ -571,16 +559,7 @@ export default function registerEvents(app, { db, storage }) {
       return;
     }
 
-    if (!isAuthorizedUploader(req)) {
-      logger.warn("Unauthorized attempt to delete image", {
-        ip: req.socket.remoteAddress,
-        imageId: req.params.id,
-      });
-      res.status(401).json({
-        error: "Missing or invalid upload credentials.",
-      });
-      return;
-    }
+    if (!requireAdmin(req, res, auth)) return;
 
     const id = req.params.id;
     if (!isValidPathSegment(id)) {
@@ -611,16 +590,7 @@ export default function registerEvents(app, { db, storage }) {
   });
 
   app.delete("/events/:slug", async (req, res) => {
-    if (!isAuthorizedUploader(req)) {
-      logger.warn("Unauthorized attempt to delete event", {
-        ip: req.socket.remoteAddress,
-        slug: req.params.slug,
-      });
-      res.status(401).json({
-        error: "Missing or invalid upload credentials.",
-      });
-      return;
-    }
+    if (!requireAdmin(req, res, auth)) return;
 
     const slug = req.params.slug;
     const event = findEventBySlug.get(slug);

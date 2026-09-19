@@ -44,18 +44,12 @@ export function getCorsHeaders(
         "access-control-allow-origin": origin,
         "access-control-allow-methods": "GET, POST, PATCH, DELETE, OPTIONS",
         "access-control-allow-headers": "Content-Type, Authorization",
+        "access-control-allow-credentials": "true",
         vary: "Origin",
       }
     : {};
 }
 
-export function isAuthorizedUploader(request) {
-  const configured = process.env.UPLOAD_API_KEY;
-  if (!configured) return false;
-  const header = request.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-  return token === configured;
-}
 
 export function createRateLimiter(
   maxRequests = RATE_LIMIT_MAX,

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createAuth } from "./auth.js";
 import { createDatabase } from "./db.js";
 import {
   createApiServer,
@@ -8,6 +9,7 @@ import {
   validateEvent,
   validateGameRecommendation,
 } from "./server.js";
+
 
 function createFakeStorage() {
   const objects = new Map();
@@ -26,28 +28,31 @@ function createFakeStorage() {
   };
 }
 
-async function withServer(
-  fn,
-  { storage = createFakeStorage(), uploadKey = "test-secret" } = {},
-) {
+async function withServer(fn, { storage = createFakeStorage() } = {}) {
   const db = createDatabase(":memory:");
-  const previousKey = process.env.UPLOAD_API_KEY;
-  process.env.UPLOAD_API_KEY = uploadKey;
-  const server = createApiServer(db, createRateLimiter(), storage);
+  const previousAdminIds = process.env.DISCORD_ADMIN_USER_IDS;
+  process.env.DISCORD_ADMIN_USER_IDS = "test-admin";
+  const auth = createAuth(db);
+  const session = auth.createSession({ id: "test-admin", username: "Test Admin" });
+  testSessionCookie = `gul_session=${session.token}`;
+  const server = createApiServer(db, createRateLimiter(), storage, auth);
   await new Promise((resolve) => server.listen(0, resolve));
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
 
   try {
     await fn({ baseUrl, storage, db });
   } finally {
-    process.env.UPLOAD_API_KEY = previousKey;
+    process.env.DISCORD_ADMIN_USER_IDS = previousAdminIds;
+    testSessionCookie = "";
     await new Promise((resolve) => server.close(resolve));
     db.close();
   }
 }
 
+let testSessionCookie = "";
+
 function authed(headers = {}) {
-  return { authorization: "Bearer test-secret", ...headers };
+  return { cookie: testSessionCookie, ...headers };
 }
 
 test("validates and trims game recommendations", () => {
@@ -102,7 +107,103 @@ test("limits recommendations per client within its window", () => {
   assert.deepEqual(limit("127.0.0.1", 2), { allowed: false, retryAfter: 1 });
   assert.equal(limit("127.0.0.1", 1_000).allowed, true);
 });
+test("limits requests across API endpoints per client", async () => {
+  const db = createDatabase(":memory:");
+  const server = createApiServer(db, createRateLimiter(1, 1_000), null);
+  await new Promise((resolve) => server.listen(0, resolve));
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
 
+  try {
+    const first = await fetch(`${baseUrl}/health`);
+    assert.equal(first.status, 200);
+
+    const second = await fetch(`${baseUrl}/events`);
+    assert.equal(second.status, 429);
+    assert.equal(second.headers.get("retry-after"), "1");
+    assert.deepEqual(await second.json(), {
+      error: "Too many requests. Try again shortly.",
+    });
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    db.close();
+  }
+});
+test("reports authenticated Discord users and admin status", async () => {
+  await withServer(async ({ baseUrl }) => {
+    const authenticated = await fetch(`${baseUrl}/auth/me`, {
+      headers: authed(),
+    });
+    assert.deepEqual(await authenticated.json(), {
+      authenticated: true,
+      admin: true,
+      user: {
+        id: "test-admin",
+        username: "Test Admin",
+        globalName: null,
+        avatar: null,
+      },
+    });
+
+    const anonymous = await fetch(`${baseUrl}/auth/me`);
+    assert.deepEqual(await anonymous.json(), {
+      authenticated: false,
+      admin: false,
+      user: null,
+    });
+  });
+});
+test("starts Discord login without re-prompting authorized users", async () => {
+  const db = createDatabase(":memory:");
+  const envNames = ["DISCORD_CLIENT_ID", "DISCORD_CLIENT_SECRET", "DISCORD_REDIRECT_URI", "NODE_ENV"];
+  const previousEnv = envNames.map((name) => [name, process.env[name]]);
+  process.env.DISCORD_CLIENT_ID = "client-id";
+  process.env.DISCORD_CLIENT_SECRET = "client-secret";
+  process.env.DISCORD_REDIRECT_URI = "http://localhost:5173/api/auth/discord/callback";
+  process.env.NODE_ENV = "production";
+  const server = createApiServer(db, createRateLimiter(), null, createAuth(db));
+  await new Promise((resolve) => server.listen(0, resolve));
+
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/auth/discord`, {
+      redirect: "manual",
+    });
+    assert.equal(new URL(response.headers.get("location")).searchParams.get("prompt"), "none");
+    assert.doesNotMatch(response.headers.get("set-cookie") || "", /; Secure/);
+  } finally {
+    for (const [name, value] of previousEnv) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+    await new Promise((resolve) => server.close(resolve));
+    db.close();
+  }
+});
+
+test("denies authenticated Discord users outside the admin allowlist", async () => {
+  const db = createDatabase(":memory:");
+  const previousAdminIds = process.env.DISCORD_ADMIN_USER_IDS;
+  process.env.DISCORD_ADMIN_USER_IDS = "another-user";
+  const auth = createAuth(db);
+  const session = auth.createSession({ id: "regular-user", username: "Regular User" });
+  const server = createApiServer(db, createRateLimiter(), null, auth);
+  await new Promise((resolve) => server.listen(0, resolve));
+
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/events`, {
+      method: "POST",
+      headers: {
+        cookie: `gul_session=${session.token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ name: "Winter LAN", eventDate: "2026-01-17", season: "winter" }),
+    });
+    assert.equal(response.status, 403);
+  } finally {
+    process.env.DISCORD_ADMIN_USER_IDS = previousAdminIds;
+    await new Promise((resolve) => server.close(resolve));
+    db.close();
+  }
+});
 test("stores, lists, and rejects duplicate recommendations", async () => {
   const db = createDatabase(":memory:");
   const server = createApiServer(db, createRateLimiter(), null);
@@ -342,7 +443,7 @@ test("returns the next upcoming event date time", async () => {
   });
 });
 
-test("rejects event creation without an upload key", async () => {
+test("rejects event creation without a Discord session", async () => {
   await withServer(async ({ baseUrl }) => {
     const response = await fetch(`${baseUrl}/events`, {
       method: "POST",
