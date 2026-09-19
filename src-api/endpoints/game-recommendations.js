@@ -1,5 +1,5 @@
 import { requireJson } from "../middleware.js";
-import { logger } from "../logger.js";
+import { logger } from "../services/logger.js";
 import {
   cleanString,
   MAX_DESCRIPTION_LENGTH,

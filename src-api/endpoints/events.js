@@ -3,8 +3,8 @@ import {
   generateImageId,
   isValidPathSegment,
   keyForImage,
-} from "../storage.js";
-import { logger } from "../logger.js";
+} from "../services/storage.js";
+import { logger } from "../services/logger.js";
 import {
   ALLOWED_IMAGE_TYPES,
   cleanString,

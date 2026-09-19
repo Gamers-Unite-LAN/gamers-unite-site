@@ -152,6 +152,34 @@
           </div>
         </section>
       </div>
+      <section v-if="selectedSlug" class="mt-6 rounded-xl border bg-card p-6 shadow-sm" aria-labelledby="polls-heading">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 id="polls-heading" class="text-xl font-bold">Discord game polls</h2>
+            <p class="mt-1 text-sm text-muted-foreground">Three games per category. Polls open one month before the event and close one week before it.</p>
+          </div>
+          <span class="rounded-full border px-3 py-1 text-xs font-bold text-muted-foreground">Automation runs from the API</span>
+        </div>
+        <div class="mt-5 grid gap-5 md:grid-cols-3">
+          <fieldset v-for="category in pollCategories" :key="category" class="space-y-3 rounded-lg border p-4">
+            <legend class="px-1 text-sm font-bold capitalize">{{ category }}</legend>
+            <div v-for="(_, index) in pollGames[category]" :key="`${category}-${index}`">
+              <label :for="`poll-${category}-${index}`" class="mb-1 block text-xs font-bold text-muted-foreground">Game {{ index + 1 }}</label>
+              <input :id="`poll-${category}-${index}`" v-model="pollGames[category][index]" type="text" maxlength="120" required class="w-full rounded-lg border bg-background px-3 py-2 text-sm" />
+            </div>
+            <p v-if="pollState(category)" class="text-xs text-muted-foreground">Status: <span class="font-bold capitalize">{{ pollState(category)?.status }}</span></p>
+          </fieldset>
+        </div>
+        <div class="mt-5 flex flex-wrap gap-3">
+          <button type="button" :disabled="savingPolls || processingPolls" class="rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground disabled:opacity-50" @click="savePolls">
+            {{ savingPolls ? "Saving…" : "Save poll games" }}
+          </button>
+          <button type="button" :disabled="processingPolls || savingPolls" class="rounded-lg border border-primary px-4 py-2 font-bold text-primary disabled:opacity-50" @click="processPolls">
+            {{ processingPolls ? "Processing…" : "Process webhook schedule" }}
+          </button>
+        </div>
+      </section>
+
       <section class="mt-8" aria-labelledby="all-events-heading">
         <div class="mb-4 flex items-end justify-between gap-4">
           <div>
@@ -225,6 +253,19 @@ type EditableEvent = {
   showCoverImage: boolean;
 };
 type UploadStatus = { name: string; state: "pending" | "uploading" | "uploaded" | "failed"; message?: string };
+type PollCategory = "modern" | "classic" | "wildcard";
+const pollCategories: PollCategory[] = ["modern", "classic", "wildcard"];
+type PollState = { category: PollCategory; games: string[]; status: string; schedule: { openAt: string; warningAt: string; closeAt: string } | null; lastError: string | null };
+type PollGames = Record<PollCategory, string[]>;
+
+function emptyPollGames(): PollGames {
+  return { modern: ["", "", ""], classic: ["", "", ""], wildcard: ["", "", ""] };
+}
+
+const pollGames = ref<PollGames>(emptyPollGames());
+const selectedPolls = ref<PollState[]>([]);
+const savingPolls = ref(false);
+const processingPolls = ref(false);
 
 const apiUrl = ref(import.meta.env.DEV ? "" : import.meta.env.VITE_API_URL || "");
 type AuthUser = { id: string; username: string; globalName: string | null; avatar: string | null };
@@ -299,7 +340,11 @@ async function loadEvents() {
 }
 
 async function loadSelectedEvent() {
-  if (!selectedSlug.value) return;
+  if (!selectedSlug.value) {
+    selectedEvent.value = null;
+    await loadPolls();
+    return;
+  }
   selectedEvent.value = null;
   selectedEventSeason.value = "";
   error.value = "";
@@ -307,10 +352,67 @@ async function loadSelectedEvent() {
     const response = await request(`/api/events/${encodeURIComponent(selectedSlug.value)}?includeHidden=true`);
     selectedEvent.value = await response.json() as EventDetail;
     selectedEventSeason.value = selectedEvent.value.event.season || "";
+    await loadPolls();
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : "Unable to load event.";
   }
 }
+function pollState(category: PollCategory) {
+  return selectedPolls.value.find((poll) => poll.category === category);
+}
+
+async function loadPolls() {
+  if (!selectedSlug.value) {
+    selectedPolls.value = [];
+    pollGames.value = emptyPollGames();
+    return;
+  }
+  const response = await request(`/api/events/${encodeURIComponent(selectedSlug.value)}/polls`);
+  const body = await response.json() as { polls: PollState[] };
+  selectedPolls.value = body.polls;
+  const games = emptyPollGames();
+  for (const poll of body.polls) {
+    if (poll.games.length === 3) games[poll.category] = [...poll.games];
+  }
+  pollGames.value = games;
+}
+
+async function savePolls() {
+  if (!selectedSlug.value) return;
+  error.value = "";
+  notice.value = "";
+  savingPolls.value = true;
+  try {
+    const response = await request(`/api/events/${encodeURIComponent(selectedSlug.value)}/polls`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ polls: pollGames.value }),
+    });
+    selectedPolls.value = (await response.json() as { polls: PollState[] }).polls;
+    notice.value = "Poll games saved. They will be posted automatically on schedule.";
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : "Unable to save poll games.";
+  } finally {
+    savingPolls.value = false;
+  }
+}
+
+async function processPolls() {
+  if (!selectedSlug.value) return;
+  error.value = "";
+  notice.value = "";
+  processingPolls.value = true;
+  try {
+    const response = await request(`/api/events/${encodeURIComponent(selectedSlug.value)}/polls/process`, { method: "POST" });
+    selectedPolls.value = (await response.json() as { polls: PollState[] }).polls;
+    notice.value = "Poll schedule processed.";
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : "Unable to process poll schedule.";
+  } finally {
+    processingPolls.value = false;
+  }
+}
+
 async function saveEvent(edit: EditableEvent) {
   error.value = "";
   notice.value = "";

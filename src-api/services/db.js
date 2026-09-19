@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 
-const defaultDatabasePath = resolve(dirname(fileURLToPath(import.meta.url)), "data/gamers-unite.sqlite");
+const defaultDatabasePath = resolve(dirname(fileURLToPath(new URL("../data/gamers-unite.sqlite", import.meta.url))));
 
 export function createDatabase(databasePath = process.env.DATABASE_PATH || defaultDatabasePath) {
   const path = databasePath === ":memory:" ? databasePath : resolve(databasePath);
@@ -90,6 +90,26 @@ export function createDatabase(databasePath = process.env.DATABASE_PATH || defau
     db.exec("ALTER TABLE images ADD COLUMN display_order INTEGER NOT NULL DEFAULT 0");
   }
   db.exec(`CREATE INDEX IF NOT EXISTS images_event_id_idx ON images (event_id)`);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS event_polls (
+      id INTEGER PRIMARY KEY,
+      event_id INTEGER NOT NULL,
+      category TEXT NOT NULL CHECK (category IN ('modern', 'classic', 'wildcard')),
+      games_json TEXT NOT NULL,
+      webhook_message_id TEXT,
+      opened_at TEXT,
+      warning_sent_at TEXT,
+      finalized_at TEXT,
+      results_json TEXT,
+      last_error TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (event_id, category),
+      FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE
+    )
+  `);
+  db.exec(`CREATE INDEX IF NOT EXISTS event_polls_event_id_idx ON event_polls (event_id)`);
 
   return db;
 }
+

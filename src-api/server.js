@@ -1,15 +1,16 @@
 import { createServer as createHttpServer } from "node:http";
 import { pathToFileURL } from "node:url";
 import express from "express";
-import { createAuth } from "./auth.js";
-import { createDatabase } from "./db.js";
-import { createStorage } from "./storage.js";
+import { createAuth } from "./services/auth.js";
+import { createDatabase } from "./services/db.js";
+import { createStorage } from "./services/storage.js";
 import { getCorsHeaders, createRateLimiter } from "./utils.js";
 import { requestLogger } from "./middleware.js";
-import { logger } from "./logger.js";
+import { logger } from "./services/logger.js";
 import { validateEvent } from "./endpoints/events.js";
 import { validateGameRecommendation } from "./endpoints/game-recommendations.js";
 import { loadEndpoints } from "./endpoints/index.js";
+import { createPollWebhookClient } from "./services/poll-service.js";
 export {
   getCorsHeaders,
   createRateLimiter,
@@ -36,6 +37,7 @@ export function createApiServer(
   rateLimit = createRateLimiter(),
   storage = createStorageOrNull(),
   auth = createAuth(db),
+  pollClient = createPollWebhookClient(),
 ) {
   const app = express();
   app.disable("x-powered-by");
@@ -73,8 +75,7 @@ export function createApiServer(
     res.status(429).json({ error: "Too many requests. Try again shortly." });
   });
 
-  // Auto-import all endpoint modules from ./endpoints
-  const context = { db, storage, auth };
+  const context = { db, storage, auth, pollClient };
   loadEndpoints(app, context);
 
   // Catch-all 404 handler for unmatched routes
@@ -83,7 +84,9 @@ export function createApiServer(
     res.status(404).json({ error: "Not found." });
   });
 
-  return createHttpServer(app);
+  const server = createHttpServer(app);
+  server.pollProcessor = app.locals.pollProcessor;
+  return server;
 }
 
 export function startServer() {
@@ -93,9 +96,15 @@ export function startServer() {
 
   server.listen(port, () => {
     logger.info(`Gamers Unite API listening on http://localhost:${port}`);
+    server.pollProcessor?.processDue().catch((error) => logger.error("Initial poll processing failed", error));
   });
+  const pollInterval = setInterval(() => {
+    server.pollProcessor?.processDue().catch((error) => logger.error("Scheduled poll processing failed", error));
+  }, 60_000);
+  pollInterval.unref();
 
   const shutdown = () => {
+    clearInterval(pollInterval);
     logger.info("Server shutting down gracefully...");
     server.close(() => {
       db.close();

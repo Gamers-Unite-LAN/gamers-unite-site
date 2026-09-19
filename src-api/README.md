@@ -57,7 +57,7 @@ By default SQLite data persists at `src-api/data/gamers-unite.sqlite`. That path
 
 ## Gallery: events and images
 
-`storage.js` is a thin wrapper around the official `@aws-sdk/client-s3` package, so it speaks real S3 protocol against any S3-compatible endpoint — MinIO today, Hetzner Object Storage or AWS/R2 later, with zero code changes. Add the dependency at the repo root:
+`services/storage.js` is a thin wrapper around the official `@aws-sdk/client-s3` package, so it speaks real S3 protocol against any S3-compatible endpoint — MinIO today, Hetzner Object Storage or AWS/R2 later, with zero code changes. Add the dependency at the repo root:
 
 ```sh
 npm install @aws-sdk/client-s3
@@ -115,6 +115,23 @@ curl -X DELETE http://localhost:3000/api/events/winter-lan-2026 \
 
 `GET /api/events` and `GET /api/events/:slug` are public and omit hidden events/images. Admin requests may add `includeHidden=true` when authenticated through Discord and included in `DISCORD_ADMIN_USER_IDS`. Creating and updating events, reordering/uploading images, and deleting either require an admin Discord session. Allowed image types: PNG, JPEG, WebP, GIF. Max upload size is 8MB by default (`MAX_IMAGE_SIZE`, in bytes). If storage env vars aren't set, image upload routes return `503`; event/game-recommendation routes keep working normally.
 
+### Discord game polls
+
+The admin page can save exactly three games for each `modern`, `classic`, and `wildcard` category on an event. The API scheduler posts one native Discord poll per category one calendar month before the event, edits each poll with a one-week warning, and edits each closed poll with its vote results and a generated SVG winner image one week before the event. The scheduler runs on API startup and every minute thereafter; `POST /api/events/:slug/polls/process` is available to an administrator for a manual retry.
+
+Set `DISCORD_POLLS_WEBHOOK_URL` to an HTTPS Discord webhook URL. Keep it private: the URL contains the webhook token and grants permission to post and edit messages. Polls are persisted in SQLite, so restarts do not duplicate messages. If the webhook is temporarily unavailable, the failed lifecycle step is retried on the next scheduler run.
+
+The poll configuration endpoints require the same Discord administrator session as event management:
+
+```sh
+curl -X PUT http://localhost:3000/api/events/summer-lan-2026/polls \
+  -H 'Content-Type: application/json' \
+  -H 'Cookie: gul_session=<DISCORD_SESSION_COOKIE>' \
+  -d '{"polls":{"modern":["Halo MCC","Rust","Soldat"],"classic":["Team Fortress 2","Battlefield 1942","Heretic II"],"wildcard":["Fall Guys","Jackbox Games","Blur"]}}'
+```
+
+Polls are scheduled from the event start date/time in UTC. Changing games after a category has opened is rejected to preserve the Discord message/results relationship.
+
 ### Environment variables
 
 | Variable | Purpose |
@@ -137,4 +154,4 @@ curl -X DELETE http://localhost:3000/api/events/winter-lan-2026 \
 4. Set `PUBLIC_ASSET_URL_BASE` to `https://minio.gamersunitelan.com/gul-images` (path-style), or put Cloudflare/a CDN in front of it if you want a nicer public hostname.
 5. Back up the MinIO data volume periodically — it has no built-in replication, and it shares disk with everything else on the server.
 
-Switching to Hetzner Object Storage (or any other S3-compatible provider) later means creating a bucket there and updating `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, and `PUBLIC_ASSET_URL_BASE` — `storage.js` and `server.js` don't change.
+Switching to Hetzner Object Storage (or any S3-compatible provider) later means creating a bucket there and updating `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, and `PUBLIC_ASSET_URL_BASE` — `services/storage.js` and `server.js` don't change.

@@ -1,5 +1,5 @@
 import express from "express";
-import { logger } from "./logger.js";
+import { logger } from "./services/logger.js";
 import { ALLOWED_IMAGE_TYPES, MAX_BODY_SIZE, MAX_IMAGE_SIZE } from "./utils.js";
 
 export function requestLogger(req, res, next) {

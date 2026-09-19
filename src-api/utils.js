@@ -30,6 +30,40 @@ export const RATE_LIMIT_WINDOW_MS = Number(
   process.env.RATE_LIMIT_WINDOW_MS || 60_000,
 );
 export const PRODUCTION_ORIGIN = "https://gamersunitelan.com";
+export const POLL_CATEGORIES = ["modern", "classic", "wildcard"];
+export const MAX_POLL_GAME_NAME_LENGTH = 120;
+export const POLL_CLOSE_DAYS_BEFORE_EVENT = 7;
+export const POLL_WARNING_DAYS_BEFORE_CLOSE = 7;
+
+export function eventDateTime(eventDate, eventTime = "00:00") {
+  return new Date(`${eventDate}T${eventTime}:00Z`);
+}
+
+export function subtractDays(date, days) {
+  const result = new Date(date);
+  result.setUTCDate(result.getUTCDate() - days);
+  return result;
+}
+
+export function subtractCalendarMonth(date) {
+  const result = new Date(date);
+  const day = result.getUTCDate();
+  result.setUTCDate(1);
+  result.setUTCMonth(result.getUTCMonth() - 1);
+  const lastDay = new Date(Date.UTC(result.getUTCFullYear(), result.getUTCMonth() + 1, 0)).getUTCDate();
+  result.setUTCDate(Math.min(day, lastDay));
+  return result;
+}
+
+export function pollSchedule(eventDate, eventTime = "00:00") {
+  const eventAt = eventDateTime(eventDate, eventTime);
+  const closeAt = subtractDays(eventAt, POLL_CLOSE_DAYS_BEFORE_EVENT);
+  return {
+    openAt: subtractCalendarMonth(eventAt),
+    warningAt: subtractDays(closeAt, POLL_WARNING_DAYS_BEFORE_CLOSE),
+    closeAt,
+  };
+}
 
 export function getCorsHeaders(
   origin,

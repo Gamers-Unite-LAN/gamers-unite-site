@@ -1,7 +1,7 @@
 import { readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { logger } from "../logger.js";
+import { logger } from "../services/logger.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

@@ -1,14 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createAuth } from "./auth.js";
-import { createDatabase } from "./db.js";
+import { createAuth } from "./services/auth.js";
+import { createDatabase } from "./services/db.js";
 import {
   createApiServer,
-  createRateLimiter,
   getCorsHeaders,
+  createRateLimiter,
   validateEvent,
   validateGameRecommendation,
 } from "./server.js";
+import { createPollProcessor, validatePolls } from "./endpoints/polls.js";
 
 
 function createFakeStorage() {
@@ -83,6 +84,43 @@ test("rejects invalid game recommendations", () => {
     error: "Request body must be a JSON object.",
   });
 });
+test("validates exactly three unique games per poll category", () => {
+  assert.deepEqual(validatePolls({ polls: {
+    modern: ["Halo", "Rust", "Soldat"],
+    classic: ["TF2", "Battlefield 1942", "Heretic II"],
+    wildcard: ["Fall Guys", "Jackbox", "Blur"],
+  } }).value.modern, ["Halo", "Rust", "Soldat"]);
+  assert.match(validatePolls({ polls: { modern: ["A", "A", "B"], classic: ["A", "B"], wildcard: ["A", "B", "C"] } }).error, /unique/);
+});
+
+test("processes poll open, warning, and final lifecycle once", async () => {
+  const db = createDatabase(":memory:");
+  const event = db.prepare("INSERT INTO events (name, slug, event_date, start_time, end_time, season) VALUES (?, ?, ?, ?, ?, ?)").run("Summer LAN", "summer-lan", "2026-07-01", "10:00", "18:00", "summer");
+  const games = { modern: ["Halo", "Rust", "Soldat"], classic: ["TF2", "BF1942", "Heretic II"], wildcard: ["Fall Guys", "Jackbox", "Blur"] };
+  for (const [category, choices] of Object.entries(games)) db.prepare("INSERT INTO event_polls (event_id, category, games_json) VALUES (?, ?, ?)").run(event.lastInsertRowid, category, JSON.stringify(choices));
+  const calls = [];
+  const client = {
+    async open(input) { calls.push(["open", input.category]); return `${input.category}-message`; },
+    async warn(input) { calls.push(["warn", input.category]); },
+    async finalize(input) { calls.push(["finalize", input.category]); return [{ gameName: input.games[0], votes: 2, winner: true }]; },
+  };
+  let current = Date.parse("2026-06-01T10:00:00Z");
+  const processor = createPollProcessor(db, client, () => current);
+  const eventRow = db.prepare("SELECT id, name, slug, event_date AS eventDate, start_time AS startTime FROM events WHERE id = ?").get(event.lastInsertRowid);
+  await processor.processEvent(eventRow);
+  current = Date.parse("2026-06-18T10:00:00Z");
+  await processor.processEvent(eventRow);
+  current = Date.parse("2026-06-25T10:00:00Z");
+  await processor.processEvent(eventRow);
+  assert.deepEqual(calls, [
+    ["open", "classic"], ["open", "modern"], ["open", "wildcard"],
+    ["warn", "classic"], ["warn", "modern"], ["warn", "wildcard"],
+    ["finalize", "classic"], ["finalize", "modern"], ["finalize", "wildcard"],
+  ]);
+  assert.equal(db.prepare("SELECT COUNT(*) AS count FROM event_polls WHERE finalized_at IS NOT NULL").get().count, 3);
+  db.close();
+});
+
 
 test("allows only production origin outside development", () => {
   assert.equal(
