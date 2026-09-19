@@ -31,14 +31,14 @@
         </div>
         <div v-if="user" class="flex items-center gap-3 text-sm">
           <span class="text-muted-foreground">Voting as <strong class="text-foreground">{{ displayName
-              }}</strong></span>
+          }}</strong></span>
           <button type="button"
             class="rounded-lg border px-3 py-2 font-bold transition hover:border-primary hover:text-primary"
             @click="signOut">Sign out</button>
         </div>
         <button v-else type="button"
           class="rounded-lg bg-primary px-5 py-3 font-bold text-primary-foreground shadow-brand transition hover:bg-secondary"
-          @click="signIn">Sign in with Discord to vote</button>
+          :class="{ 'poll-login-shake': loginShake }" @click="signIn">Sign in with Discord to vote</button>
       </section>
 
       <div class="mt-8 grid gap-6 lg:grid-cols-3">
@@ -57,7 +57,7 @@
 
           <div class="space-y-3 p-5">
             <button v-for="(result, index) in poll.results" :key="result.gameName" type="button"
-              :disabled="poll.status !== 'open' || !user || voting === poll.category"
+              :disabled="poll.status !== 'open' || voting === poll.category"
               :aria-pressed="poll.voterGameIndex === index"
               class="w-full rounded-xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default disabled:opacity-90"
               :class="poll.voterGameIndex === index ? 'border-primary bg-primary/10' : 'hover:border-primary/60 hover:bg-primary/5'"
@@ -78,17 +78,20 @@
                 class="mt-2 block text-xs font-bold text-primary">Winner</span>
             </button>
           </div>
-
-          <footer v-if="poll.status === 'open' && !user" class="border-t bg-muted/10 p-5 text-sm text-muted-foreground">
-            <button type="button" class="font-bold text-primary hover:underline" @click="signIn">Sign in with
-              Discord</button> to cast your vote.
-          </footer>
         </article>
       </div>
     </template>
 
     <p v-if="notice" class="mx-auto mt-6 max-w-5xl rounded-lg border border-primary/30 bg-primary/10 p-4 font-medium"
       role="status">{{ notice }}</p>
+    <div v-if="showLoginToast"
+      class="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4 rounded-xl border border-primary/40 bg-card px-5 py-4 text-sm font-bold text-foreground shadow-2xl"
+      role="status" aria-live="polite">
+      <span>Log in with Discord to vote.</span>
+      <button type="button"
+        class="rounded-lg bg-primary px-3 py-2 text-primary-foreground transition hover:bg-secondary"
+        @click="signIn">Log in</button>
+    </div>
   </main>
 </template>
 
@@ -120,6 +123,9 @@ const loading = ref(true);
 const error = ref("");
 const voting = ref("");
 const notice = ref("");
+const showLoginToast = ref(false);
+const loginShake = ref(false);
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
 const categoryOrder = ["modern", "classic", "wildcard"] as const;
 const categoryImages: Record<Poll["category"], string> = {
   modern: "/game-poll-categories/modern.png",
@@ -129,7 +135,6 @@ const categoryImages: Record<Poll["category"], string> = {
 
 const pollStatus = computed(() => state.value.polls.map((poll) => poll.status)[0]);
 const pollSchedule = computed(() => state.value.polls.map((poll) => poll.schedule)[0]);
-
 const orderedPolls = computed(() => categoryOrder.map((category) => state.value.polls.find((poll) => poll.category === category)).filter((poll): poll is Poll => Boolean(poll)));
 const displayName = computed(() => user.value?.globalName || user.value?.username || "there");
 
@@ -166,7 +171,18 @@ function signIn() {
 }
 
 async function vote(poll: Poll, gameIndex: number) {
-  if (!user.value || poll.status !== "open") return;
+  if (!user.value) {
+    showLoginToast.value = true;
+    loginShake.value = false;
+    requestAnimationFrame(() => { loginShake.value = true; });
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      showLoginToast.value = false;
+      loginShake.value = false;
+    }, 3_500);
+    return;
+  }
+  if (poll.status !== "open") return;
   voting.value = poll.category;
   error.value = "";
   notice.value = "";
@@ -198,3 +214,25 @@ function dateTimeLabel(value: string) {
 useHead({ title: "Vote for LAN games | Gamers Unite!" });
 onMounted(load);
 </script>
+
+<style scoped>
+@keyframes poll-login-shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-4px);
+  }
+
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+.poll-login-shake {
+  animation: poll-login-shake 320ms ease-in-out;
+}
+</style>
