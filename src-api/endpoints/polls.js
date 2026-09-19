@@ -21,6 +21,30 @@ function requireAdmin(request, response, auth) {
   }
   return true;
 }
+function requireUser(request, response, auth) {
+  const user = auth.getUser(request);
+  if (!user) {
+    response.status(401).json({ error: "Discord login required." });
+    return null;
+  }
+  return user;
+}
+
+function validateVote(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input) || !Number.isInteger(input.gameIndex) || input.gameIndex < 0 || input.gameIndex > 2) {
+    return { error: "gameIndex must be 0, 1, or 2." };
+  }
+  return { value: input.gameIndex };
+}
+
+function parseResults(row) {
+  if (!row.resultsJson) return null;
+  try {
+    return JSON.parse(row.resultsJson);
+  } catch {
+    return null;
+  }
+}
 
 export function validatePolls(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
@@ -57,6 +81,13 @@ function parseGames(row) {
     return [];
   }
 }
+function resultsForGames(games, counts) {
+  const countByIndex = new Map(counts.map((count) => [Number(count.gameIndex), Number(count.votes)]));
+  const results = games.map((gameName, gameIndex) => ({ gameName, votes: countByIndex.get(gameIndex) || 0, winner: false }));
+  const highest = Math.max(0, ...results.map((result) => result.votes));
+  return results.map((result) => ({ ...result, winner: highest > 0 && result.votes === highest }));
+}
+
 
 function statusFor(row, now, schedule) {
   if (row.finalizedAt) return "closed";
@@ -102,10 +133,30 @@ function stateFor(event, rows, now = Date.now()) {
     schedule: null,
   });
 }
+function publicPollState(event, row, counts, voterGameIndex, now) {
+  const schedule = pollSchedule(event.eventDate, event.startTime);
+  const games = parseGames(row);
+  const closed = Boolean(row.finalizedAt) || now >= schedule.closeAt.getTime();
+  const open = !closed && now >= schedule.openAt.getTime();
+  const liveResults = resultsForGames(games, counts);
+  return {
+    category: row.category,
+    games,
+    status: closed ? "closed" : open ? "open" : "scheduled",
+    schedule: {
+      openAt: schedule.openAt.toISOString(),
+      warningAt: schedule.warningAt.toISOString(),
+      closeAt: schedule.closeAt.toISOString(),
+    },
+    voterGameIndex,
+    results: parseResults(row) || liveResults,
+  };
+}
 
 export function createPollProcessor(db, pollClient = createPollWebhookClient(), now = () => Date.now()) {
   const findEvent = db.prepare("SELECT id, name, slug, event_date AS eventDate, start_time AS startTime FROM events WHERE slug = ?");
-  const listPolls = db.prepare("SELECT category, games_json AS gamesJson, webhook_message_id AS webhookMessageId, opened_at AS openedAt, warning_sent_at AS warningSentAt, finalized_at AS finalizedAt, results_json AS resultsJson, last_error AS lastError FROM event_polls WHERE event_id = ? ORDER BY category");
+  const listPolls = db.prepare("SELECT id, category, games_json AS gamesJson, webhook_message_id AS webhookMessageId, opened_at AS openedAt, warning_sent_at AS warningSentAt, finalized_at AS finalizedAt, results_json AS resultsJson, last_error AS lastError FROM event_polls WHERE event_id = ? ORDER BY category");
+  const listVoteCounts = db.prepare("SELECT game_index AS gameIndex, COUNT(*) AS votes FROM poll_votes WHERE poll_id = ? GROUP BY game_index");
   const updatePoll = db.prepare("UPDATE event_polls SET webhook_message_id = COALESCE(?, webhook_message_id), opened_at = COALESCE(?, opened_at), warning_sent_at = COALESCE(?, warning_sent_at), finalized_at = COALESCE(?, finalized_at), results_json = COALESCE(?, results_json), last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE event_id = ? AND category = ?");
 
   async function processEvent(event) {
@@ -128,7 +179,8 @@ export function createPollProcessor(db, pollClient = createPollWebhookClient(), 
           row.warningSentAt = new Date(current).toISOString();
         }
         if (row.webhookMessageId && !row.finalizedAt && current >= schedule.closeAt.getTime()) {
-          const results = await pollClient.finalize({ messageId: row.webhookMessageId, eventName: event.name, category: row.category, games });
+          const results = resultsForGames(games, listVoteCounts.all(row.id));
+          await pollClient.finalize({ messageId: row.webhookMessageId, eventName: event.name, category: row.category, games, results });
           updatePoll.run(null, null, null, new Date(current).toISOString(), JSON.stringify(results), null, event.id, row.category);
           row.finalizedAt = new Date(current).toISOString();
           row.resultsJson = JSON.stringify(results);
@@ -157,10 +209,71 @@ export function createPollProcessor(db, pollClient = createPollWebhookClient(), 
 
 export default function registerPolls(app, { db, auth, pollClient }) {
   const findEvent = db.prepare("SELECT id, name, slug, event_date AS eventDate, start_time AS startTime FROM events WHERE slug = ?");
-  const listPolls = db.prepare("SELECT category, games_json AS gamesJson, webhook_message_id AS webhookMessageId, opened_at AS openedAt, warning_sent_at AS warningSentAt, finalized_at AS finalizedAt, results_json AS resultsJson, last_error AS lastError FROM event_polls WHERE event_id = ? ORDER BY category");
+  const listPolls = db.prepare("SELECT id, category, games_json AS gamesJson, webhook_message_id AS webhookMessageId, opened_at AS openedAt, warning_sent_at AS warningSentAt, finalized_at AS finalizedAt, results_json AS resultsJson, last_error AS lastError FROM event_polls WHERE event_id = ? ORDER BY category");
+  const listVoteCounts = db.prepare("SELECT game_index AS gameIndex, COUNT(*) AS votes FROM poll_votes WHERE poll_id = ? GROUP BY game_index");
+  const findVote = db.prepare("SELECT game_index AS gameIndex FROM poll_votes WHERE poll_id = ? AND discord_id = ?");
+  const saveVote = db.prepare("INSERT INTO poll_votes (poll_id, discord_id, game_index) VALUES (?, ?, ?) ON CONFLICT(poll_id, discord_id) DO UPDATE SET game_index = excluded.game_index, updated_at = CURRENT_TIMESTAMP");
   const insertPoll = db.prepare("INSERT INTO event_polls (event_id, category, games_json) VALUES (?, ?, ?)");
   const updateGames = db.prepare("UPDATE event_polls SET games_json = ?, last_error = NULL, updated_at = CURRENT_TIMESTAMP WHERE event_id = ? AND category = ? AND opened_at IS NULL");
   const processor = createPollProcessor(db, pollClient);
+  app.get("/polls/current", (req, res) => {
+    const events = db.prepare("SELECT id, name, slug, event_date AS eventDate, start_time AS startTime FROM events ORDER BY event_date ASC, start_time ASC, id ASC").all();
+    const now = Date.now();
+    const user = auth.getUser(req);
+    const event = events.find((candidate) => {
+      const schedule = pollSchedule(candidate.eventDate, candidate.startTime);
+      return schedule.closeAt.getTime() > now && listPolls.all(candidate.id).length > 0;
+    });
+    if (!event) {
+      res.json({ event: null, polls: [] });
+      return;
+    }
+    const polls = listPolls.all(event.id).map((row) => publicPollState(
+      event,
+      row,
+      listVoteCounts.all(row.id),
+      user ? findVote.get(row.id, user.discordId)?.gameIndex ?? null : null,
+      now,
+    ));
+    res.json({ event: { name: event.name, slug: event.slug, eventDate: event.eventDate, startTime: event.startTime }, polls });
+  });
+
+  app.post("/events/:slug/polls/:category/vote", (req, res) => {
+    const user = requireUser(req, res, auth);
+    if (!user) return;
+    if (!POLL_CATEGORIES.includes(req.params.category)) {
+      res.status(404).json({ error: "Poll category not found." });
+      return;
+    }
+    requireJson(req, res, () => {
+      const validation = validateVote(req.body);
+      if (validation.error) {
+        res.status(400).json({ error: validation.error });
+        return;
+      }
+      const event = findEvent.get(req.params.slug);
+      const row = event && listPolls.all(event.id).find((poll) => poll.category === req.params.category);
+      if (!event || !row) {
+        res.status(404).json({ error: "Poll not found." });
+        return;
+      }
+      const schedule = pollSchedule(event.eventDate, event.startTime);
+      const now = Date.now();
+      if (row.finalizedAt || now < schedule.openAt.getTime() || now >= schedule.closeAt.getTime()) {
+        res.status(409).json({ error: "This poll is not open for voting." });
+        return;
+      }
+      const games = parseGames(row);
+      if (validation.value >= games.length) {
+        res.status(400).json({ error: "That game is not available in this poll." });
+        return;
+      }
+      saveVote.run(row.id, user.discordId, validation.value);
+      res.json({
+        poll: publicPollState(event, row, listVoteCounts.all(row.id), validation.value, now),
+      });
+    });
+  });
 
   app.get("/events/:slug/polls", (req, res) => {
     if (!requireAdmin(req, res, auth)) return;
@@ -186,7 +299,8 @@ export default function registerPolls(app, { db, auth, pollClient }) {
         return;
       }
       const existing = new Map(listPolls.all(event.id).map((row) => [row.category, row]));
-      if ([...existing.values()].some((row) => row.openedAt)) {
+      const schedule = pollSchedule(event.eventDate, event.startTime);
+      if (existing.size && (Date.now() >= schedule.openAt.getTime() || [...existing.values()].some((row) => row.openedAt))) {
         res.status(409).json({ error: "Poll games cannot be changed after polling has opened." });
         return;
       }

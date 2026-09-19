@@ -3,6 +3,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const SESSION_COOKIE = "gul_session";
 const OAUTH_STATE_COOKIE = "gul_discord_state";
+const RETURN_TO_COOKIE = "gul_discord_return_to";
 const DEFAULT_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
 const OAUTH_STATE_TTL_SECONDS = 10 * 60;
 
@@ -63,6 +64,9 @@ function redirectTarget(path) {
   if (configured) return new URL(path, configured).href;
   const redirectUri = discordConfig().redirectUri;
   return redirectUri ? new URL(path, redirectUri).href : path;
+}
+function safeReturnTo(value) {
+  return typeof value === "string" && /^\/(?!\/)[^\s]{0,180}$/.test(value) ? value : "/admin";
 }
 
 function userFromDiscord(user) {
@@ -175,6 +179,7 @@ export function createAuth(db) {
     const state = randomBytes(32).toString("base64url");
     const prompt = request.query.prompt === "consent" ? "consent" : "none";
     response.append("Set-Cookie", cookie(OAUTH_STATE_COOKIE, state, OAUTH_STATE_TTL_SECONDS));
+    response.append("Set-Cookie", cookie(RETURN_TO_COOKIE, safeReturnTo(request.query.returnTo), OAUTH_STATE_TTL_SECONDS));
     const url = new URL("https://discord.com/oauth2/authorize");
     url.search = new URLSearchParams({
       response_type: "code",
@@ -193,6 +198,8 @@ export function createAuth(db) {
     const expected = Buffer.from(expectedState);
     const actual = Buffer.from(typeof state === "string" ? state : "");
     response.append("Set-Cookie", clearCookie(OAUTH_STATE_COOKIE));
+    const returnTo = safeReturnTo(getCookie(request, RETURN_TO_COOKIE));
+    response.append("Set-Cookie", clearCookie(RETURN_TO_COOKIE));
     if (!expectedState || expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
       response.status(400).json({ error: "Invalid Discord login state." });
       return;
@@ -214,7 +221,7 @@ export function createAuth(db) {
       const user = await exchangeCode(code);
       const session = createSession(user);
       setSession(response, session.token);
-      response.redirect(redirectTarget("/admin"));
+      response.redirect(redirectTarget(returnTo));
     } catch (error) {
       response.redirect(redirectTarget("/admin?auth=error"));
     }

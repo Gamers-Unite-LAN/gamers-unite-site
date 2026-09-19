@@ -51,36 +51,23 @@ export function buildPollResultsImage({ eventName, category, results }) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#141125"/><stop offset="1" stop-color="#362318"/></linearGradient></defs><rect width="1200" height="675" fill="url(#bg)"/><circle cx="1040" cy="80" r="220" fill="#f59e0b" opacity=".12"/><circle cx="120" cy="620" r="250" fill="#22c55e" opacity=".1"/><text x="600" y="170" text-anchor="middle" fill="#fbbf24" font-family="Arial,sans-serif" font-size="28" font-weight="700" letter-spacing="4">GAMERS UNITE LAN</text><text x="600" y="245" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-size="42" font-weight="700">${escapeXml(title)}</text>${text}<text x="600" y="590" text-anchor="middle" fill="#cbd5e1" font-family="Arial,sans-serif" font-size="22">Poll closed · thanks for voting</text><style>.winner{fill:#fff;font-family:Arial,sans-serif;font-size:34px;font-weight:700}</style></svg>`;
 }
 
-function resultRows(message, games) {
-  const answers = message?.poll?.answers || [];
-  const counts = message?.poll?.results?.answer_counts || [];
-  const countById = new Map(counts.map((entry) => [String(entry.id ?? entry.answer_id), Number(entry.count) || 0]));
-  const rows = games.map((game, index) => {
-    const answer = answers[index];
-    const answerId = answer?.answer_id ?? answer?.id ?? index + 1;
-    return { gameName: game, votes: countById.get(String(answerId)) ?? countById.get(String(index + 1)) ?? 0, winner: false };
-  });
-  const highest = Math.max(0, ...rows.map((row) => row.votes));
-  return rows.map((row) => ({ ...row, winner: highest > 0 && row.votes === highest }));
-}
 
 export function createPollWebhookClient() {
   return {
-    async open({ eventName, category, games, durationHours }) {
+    async open({ eventName, category, games }) {
       const url = webhookUrl();
       if (!url) throw new Error("DISCORD_POLLS_WEBHOOK_URL is not configured.");
+      const voteUrl = `${(process.env.DISCORD_FRONTEND_URL || "https://gamersunitelan.com").replace(/\/$/, "")}/polls`;
       const response = await discordRequest(`${url}?wait=true`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          content: `🎮 ${eventName}: ${categoryLabel(category)} game poll is open!`,
-          poll: {
-            question: { text: `Which ${categoryLabel(category)} game do you want to play at ${eventName}?` },
-            answers: games.map((game) => ({ poll_media: { text: game } })),
-            duration: Math.max(1, Math.min(768, Math.round(durationHours))),
-            allow_multiselect: false,
-            layout_type: 1,
-          },
+          content: `🎮 ${eventName}: ${categoryLabel(category)} game poll is open! Vote at ${voteUrl}`,
+          embeds: [{
+            title: `${categoryLabel(category)} games`,
+            description: games.map((game, index) => `**${index + 1}. ${game}**`).join("\n"),
+            footer: { text: "Discord login required to vote" },
+          }],
         }),
       });
       return (await response.json()).id;
@@ -94,11 +81,9 @@ export function createPollWebhookClient() {
         body: JSON.stringify({ content: `⏳ ${eventName}: ${categoryLabel(category)} game poll closes in one week — cast your vote!` }),
       });
     },
-    async finalize({ messageId, eventName, category, games }) {
+    async finalize({ messageId, eventName, category, results }) {
       const url = webhookUrl();
       if (!url) throw new Error("DISCORD_POLLS_WEBHOOK_URL is not configured.");
-      const messageResponse = await discordRequest(`${url}/messages/${encodeURIComponent(messageId)}`);
-      const results = resultRows(await messageResponse.json(), games);
       const svg = buildPollResultsImage({ eventName, category, results });
       const form = new FormData();
       form.append("payload_json", JSON.stringify({

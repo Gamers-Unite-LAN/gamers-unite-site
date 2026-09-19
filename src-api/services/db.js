@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 
-const defaultDatabasePath = resolve(dirname(fileURLToPath(new URL("../data/gamers-unite.sqlite", import.meta.url))));
+const defaultDatabasePath = fileURLToPath(new URL("../data/gamers-unite.sqlite", import.meta.url));
 
 export function createDatabase(databasePath = process.env.DATABASE_PATH || defaultDatabasePath) {
   const path = databasePath === ":memory:" ? databasePath : resolve(databasePath);
@@ -109,6 +109,18 @@ export function createDatabase(databasePath = process.env.DATABASE_PATH || defau
     )
   `);
   db.exec(`CREATE INDEX IF NOT EXISTS event_polls_event_id_idx ON event_polls (event_id)`);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS poll_votes (
+      poll_id INTEGER NOT NULL,
+      discord_id TEXT NOT NULL,
+      game_index INTEGER NOT NULL CHECK (game_index BETWEEN 0 AND 2),
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (poll_id, discord_id),
+      FOREIGN KEY (poll_id) REFERENCES event_polls (id) ON DELETE CASCADE
+    )
+  `);
+  db.exec(`CREATE INDEX IF NOT EXISTS poll_votes_poll_id_idx ON poll_votes (poll_id)`);
 
   return db;
 }

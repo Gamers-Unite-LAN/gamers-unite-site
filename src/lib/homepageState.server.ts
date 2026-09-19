@@ -15,7 +15,7 @@ function toEventDateTime(eventDate: string, eventTime: string) {
 
 export async function loadHomepageInitialState(): Promise<HomepageInitialState> {
   // @ts-expect-error Server-only import from the colocated API package.
-  const { createDatabase } = await import("../../src-api/db.js");
+  const { createDatabase } = await import("../../src-api/services/db.js");
   const db = createDatabase();
 
   try {

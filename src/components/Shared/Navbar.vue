@@ -8,7 +8,7 @@ const links = [
   { href: "/#games", label: "Games" },
   { href: "/#reviews", label: "Community" },
   { href: "/#team", label: "Team" },
-  { href: "/#contact", label: "Next meetup" },
+  { href: "/polls", label: "Vote" },
   { href: "/Gallery", label: "Gallery" },
   { href: "/core-principles", label: "Principles" },
   { href: "/documents/expense-policy", label: "Documents" },

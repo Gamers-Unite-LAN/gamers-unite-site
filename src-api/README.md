@@ -117,9 +117,11 @@ curl -X DELETE http://localhost:3000/api/events/winter-lan-2026 \
 
 ### Discord game polls
 
-The admin page can save exactly three games for each `modern`, `classic`, and `wildcard` category on an event. The API scheduler posts one native Discord poll per category one calendar month before the event, edits each poll with a one-week warning, and edits each closed poll with its vote results and a generated SVG winner image one week before the event. The scheduler runs on API startup and every minute thereafter; `POST /api/events/:slug/polls/process` is available to an administrator for a manual retry.
+The admin page can save exactly three games for each `modern`, `classic`, and `wildcard` category on an event. The public `/polls` page shows the three website polls one calendar month before the event; every vote requires a Discord login and each user can hold one vote per category. The API scheduler sends a Discord webhook announcement when polls open, edits it with a one-week warning, and edits it with the final vote results and generated SVG winner image one week before the event. The scheduler runs on API startup and every minute thereafter; `POST /api/events/:slug/polls/process` is available to an administrator for a manual retry.
 
-Set `DISCORD_POLLS_WEBHOOK_URL` to an HTTPS Discord webhook URL. Keep it private: the URL contains the webhook token and grants permission to post and edit messages. Polls are persisted in SQLite, so restarts do not duplicate messages. If the webhook is temporarily unavailable, the failed lifecycle step is retried on the next scheduler run.
+Set `DISCORD_POLLS_WEBHOOK_URL` to an HTTPS Discord webhook URL. Keep it private: the URL contains the webhook token and grants permission to post and edit messages. Set `DISCORD_FRONTEND_URL` so webhook announcements link to the deployed `/polls` page. Polls and votes are persisted in SQLite, so restarts do not duplicate messages. If the webhook is temporarily unavailable, the failed lifecycle step is retried on the next scheduler run.
+
+`GET /api/polls/current` returns the current or next configured poll set. `POST /api/events/:slug/polls/:category/vote` accepts `{ "gameIndex": 0 }` and requires any authenticated Discord session; the admin allowlist is not required for voting.
 
 The poll configuration endpoints require the same Discord administrator session as event management:
 

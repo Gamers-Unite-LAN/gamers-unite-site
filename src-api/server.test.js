@@ -120,7 +120,45 @@ test("processes poll open, warning, and final lifecycle once", async () => {
   assert.equal(db.prepare("SELECT COUNT(*) AS count FROM event_polls WHERE finalized_at IS NOT NULL").get().count, 3);
   db.close();
 });
+test("requires Discord login and stores one vote per category", async () => {
+  await withServer(async ({ baseUrl, db }) => {
+    const eventDate = new Date(Date.now() + 20 * 24 * 60 * 60 * 1_000).toISOString().slice(0, 10);
+    const create = await fetch(`${baseUrl}/events`, {
+      method: "POST",
+      headers: authed({ "content-type": "application/json" }),
+      body: JSON.stringify({ name: "Vote LAN", eventDate, season: "summer" }),
+    });
+    const { event } = await create.json();
+    const configure = await fetch(`${baseUrl}/events/${event.slug}/polls`, {
+      method: "PUT",
+      headers: authed({ "content-type": "application/json" }),
+      body: JSON.stringify({ polls: { modern: ["Halo", "Rust", "Soldat"], classic: ["TF2", "BF1942", "Heretic II"], wildcard: ["Fall Guys", "Jackbox", "Blur"] } }),
+    });
+    assert.equal(configure.status, 200);
 
+    const current = await fetch(`${baseUrl}/polls/current`);
+    assert.equal(current.status, 200);
+    assert.equal((await current.json()).polls.length, 3);
+
+    const anonymousVote = await fetch(`${baseUrl}/events/${event.slug}/polls/modern/vote`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ gameIndex: 1 }),
+    });
+    assert.equal(anonymousVote.status, 401);
+
+    const voterAuth = createAuth(db);
+    const voter = voterAuth.createSession({ id: "voter", username: "Voter" });
+    const vote = await fetch(`${baseUrl}/events/${event.slug}/polls/modern/vote`, {
+      method: "POST",
+      headers: { cookie: `gul_session=${voter.token}`, "content-type": "application/json" },
+      body: JSON.stringify({ gameIndex: 1 }),
+    });
+    assert.equal(vote.status, 200);
+    assert.equal((await vote.json()).poll.voterGameIndex, 1);
+    assert.equal(db.prepare("SELECT COUNT(*) AS count FROM poll_votes").get().count, 1);
+  });
+});
 
 test("allows only production origin outside development", () => {
   assert.equal(
