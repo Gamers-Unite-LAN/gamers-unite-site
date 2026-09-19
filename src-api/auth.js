@@ -45,8 +45,12 @@ function getCookie(request, name) {
   return "";
 }
 
+function useSecureCookies() {
+  return process.env.NODE_ENV === "production" && discordConfig().redirectUri.startsWith("https://");
+}
+
 function cookie(name, value, maxAge) {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  const secure = useSecureCookies() ? "; Secure" : "";
   return `${name}=${encodeURIComponent(value)}; Max-Age=${maxAge}; Path=/; HttpOnly; SameSite=Lax${secure}`;
 }
 
@@ -154,13 +158,22 @@ export function createAuth(db) {
     return userResponse.json();
   }
 
-  function startLogin(response) {
+  function loginUrl(prompt) {
+    const { redirectUri } = discordConfig();
+    const callback = new URL(redirectUri);
+    callback.pathname = callback.pathname.replace(/\/callback$/, "");
+    callback.search = new URLSearchParams({ prompt });
+    return callback.href;
+  }
+
+  function startLogin(request, response) {
     if (!isConfigured()) {
       response.status(503).json({ error: "Discord login is not configured." });
       return;
     }
     const { clientId, redirectUri } = discordConfig();
     const state = randomBytes(32).toString("base64url");
+    const prompt = request.query.prompt === "consent" ? "consent" : "none";
     response.append("Set-Cookie", cookie(OAUTH_STATE_COOKIE, state, OAUTH_STATE_TTL_SECONDS));
     const url = new URL("https://discord.com/oauth2/authorize");
     url.search = new URLSearchParams({
@@ -169,6 +182,7 @@ export function createAuth(db) {
       scope: "identify",
       state,
       redirect_uri: redirectUri,
+      prompt,
     });
     response.redirect(url.href);
   }
@@ -176,15 +190,23 @@ export function createAuth(db) {
   async function finishLogin(request, response) {
     const { code, state, error } = request.query;
     const expectedState = getCookie(request, OAUTH_STATE_COOKIE);
+    const expected = Buffer.from(expectedState);
+    const actual = Buffer.from(typeof state === "string" ? state : "");
     response.append("Set-Cookie", clearCookie(OAUTH_STATE_COOKIE));
-    if (error || typeof code !== "string" || !code || typeof state !== "string" || !state) {
+    if (!expectedState || expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+      response.status(400).json({ error: "Invalid Discord login state." });
+      return;
+    }
+    if (error) {
+      if (["login_required", "consent_required", "interaction_required"].includes(error)) {
+        response.redirect(loginUrl("consent"));
+        return;
+      }
       response.redirect(redirectTarget("/admin?auth=denied"));
       return;
     }
-    const expected = Buffer.from(expectedState);
-    const actual = Buffer.from(state);
-    if (!expectedState || expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
-      response.status(400).json({ error: "Invalid Discord login state." });
+    if (typeof code !== "string" || !code) {
+      response.redirect(redirectTarget("/admin?auth=denied"));
       return;
     }
 

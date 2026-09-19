@@ -152,6 +152,32 @@ test("reports authenticated Discord users and admin status", async () => {
     });
   });
 });
+test("starts Discord login without re-prompting authorized users", async () => {
+  const db = createDatabase(":memory:");
+  const envNames = ["DISCORD_CLIENT_ID", "DISCORD_CLIENT_SECRET", "DISCORD_REDIRECT_URI", "NODE_ENV"];
+  const previousEnv = envNames.map((name) => [name, process.env[name]]);
+  process.env.DISCORD_CLIENT_ID = "client-id";
+  process.env.DISCORD_CLIENT_SECRET = "client-secret";
+  process.env.DISCORD_REDIRECT_URI = "http://localhost:5173/api/auth/discord/callback";
+  process.env.NODE_ENV = "production";
+  const server = createApiServer(db, createRateLimiter(), null, createAuth(db));
+  await new Promise((resolve) => server.listen(0, resolve));
+
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/auth/discord`, {
+      redirect: "manual",
+    });
+    assert.equal(new URL(response.headers.get("location")).searchParams.get("prompt"), "none");
+    assert.doesNotMatch(response.headers.get("set-cookie") || "", /; Secure/);
+  } finally {
+    for (const [name, value] of previousEnv) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+    await new Promise((resolve) => server.close(resolve));
+    db.close();
+  }
+});
 
 test("denies authenticated Discord users outside the admin allowlist", async () => {
   const db = createDatabase(":memory:");

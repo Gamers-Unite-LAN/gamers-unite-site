@@ -1,6 +1,6 @@
 export default function registerAuth(app, { auth }) {
   app.get("/auth/discord", (req, res) => {
-    auth.startLogin(res);
+    auth.startLogin(req, res);
   });
 
   app.get("/auth/discord/callback", async (req, res) => {
