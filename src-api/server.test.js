@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createAuth } from "./auth.js";
 import { createDatabase } from "./db.js";
 import {
   createApiServer,
@@ -8,6 +9,7 @@ import {
   validateEvent,
   validateGameRecommendation,
 } from "./server.js";
+
 
 function createFakeStorage() {
   const objects = new Map();
@@ -26,28 +28,31 @@ function createFakeStorage() {
   };
 }
 
-async function withServer(
-  fn,
-  { storage = createFakeStorage(), uploadKey = "test-secret" } = {},
-) {
+async function withServer(fn, { storage = createFakeStorage() } = {}) {
   const db = createDatabase(":memory:");
-  const previousKey = process.env.UPLOAD_API_KEY;
-  process.env.UPLOAD_API_KEY = uploadKey;
-  const server = createApiServer(db, createRateLimiter(), storage);
+  const previousAdminIds = process.env.DISCORD_ADMIN_USER_IDS;
+  process.env.DISCORD_ADMIN_USER_IDS = "test-admin";
+  const auth = createAuth(db);
+  const session = auth.createSession({ id: "test-admin", username: "Test Admin" });
+  testSessionCookie = `gul_session=${session.token}`;
+  const server = createApiServer(db, createRateLimiter(), storage, auth);
   await new Promise((resolve) => server.listen(0, resolve));
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
 
   try {
     await fn({ baseUrl, storage, db });
   } finally {
-    process.env.UPLOAD_API_KEY = previousKey;
+    process.env.DISCORD_ADMIN_USER_IDS = previousAdminIds;
+    testSessionCookie = "";
     await new Promise((resolve) => server.close(resolve));
     db.close();
   }
 }
 
+let testSessionCookie = "";
+
 function authed(headers = {}) {
-  return { authorization: "Bearer test-secret", ...headers };
+  return { cookie: testSessionCookie, ...headers };
 }
 
 test("validates and trims game recommendations", () => {
@@ -363,7 +368,7 @@ test("returns the next upcoming event date time", async () => {
   });
 });
 
-test("rejects event creation without an upload key", async () => {
+test("rejects event creation without a Discord session", async () => {
   await withServer(async ({ baseUrl }) => {
     const response = await fetch(`${baseUrl}/events`, {
       method: "POST",
