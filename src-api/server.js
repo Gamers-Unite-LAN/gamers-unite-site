@@ -1,6 +1,7 @@
 import { createServer as createHttpServer } from "node:http";
 import { pathToFileURL } from "node:url";
 import express from "express";
+import { createAuth } from "./auth.js";
 import { createDatabase } from "./db.js";
 import { createStorage } from "./storage.js";
 import { getCorsHeaders, createRateLimiter } from "./utils.js";
@@ -9,7 +10,6 @@ import { logger } from "./logger.js";
 import { validateEvent } from "./endpoints/events.js";
 import { validateGameRecommendation } from "./endpoints/game-recommendations.js";
 import { loadEndpoints } from "./endpoints/index.js";
-
 export {
   getCorsHeaders,
   createRateLimiter,
@@ -35,6 +35,7 @@ export function createApiServer(
   db = createDatabase(),
   rateLimit = createRateLimiter(),
   storage = createStorageOrNull(),
+  auth = createAuth(db),
 ) {
   const app = express();
   app.disable("x-powered-by");
@@ -73,7 +74,7 @@ export function createApiServer(
   });
 
   // Auto-import all endpoint modules from ./endpoints
-  const context = { db, storage };
+  const context = { db, storage, auth };
   loadEndpoints(app, context);
 
   // Catch-all 404 handler for unmatched routes
