@@ -171,13 +171,31 @@
           </fieldset>
         </div>
         <div class="mt-5 flex flex-wrap gap-3">
-          <button type="button" :disabled="savingPolls || processingPolls" class="rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground disabled:opacity-50" @click="savePolls">
+          <button type="button" :disabled="savingPolls || processingPolls || Boolean(debuggingPollStage)" class="rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground disabled:opacity-50" @click="savePolls">
             {{ savingPolls ? "Saving…" : "Save poll games" }}
           </button>
-          <button type="button" :disabled="processingPolls || savingPolls" class="rounded-lg border border-primary px-4 py-2 font-bold text-primary disabled:opacity-50" @click="processPolls">
+          <button type="button" :disabled="processingPolls || savingPolls || Boolean(debuggingPollStage)" class="rounded-lg border border-primary px-4 py-2 font-bold text-primary disabled:opacity-50" @click="processPolls">
             {{ processingPolls ? "Processing…" : "Process webhook schedule" }}
           </button>
         </div>
+        <section v-if="isDevelopment" class="mt-5 rounded-lg border border-dashed border-primary/50 bg-primary/5 p-4" aria-labelledby="poll-debug-heading">
+          <h3 id="poll-debug-heading" class="font-bold">Development webhook tests</h3>
+          <p class="mt-1 text-sm text-muted-foreground">Send the same opening, warning, and final webhook actions used by the API scheduler.</p>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button type="button" :disabled="Boolean(debuggingPollStage)" class="rounded-lg border px-3 py-2 text-sm font-bold disabled:opacity-50" @click="debugPolls('open')">
+              {{ debuggingPollStage === "open" ? "Sending…" : "Test opening webhook" }}
+            </button>
+            <button type="button" :disabled="Boolean(debuggingPollStage)" class="rounded-lg border px-3 py-2 text-sm font-bold disabled:opacity-50" @click="debugPolls('warning')">
+              {{ debuggingPollStage === "warning" ? "Sending…" : "Test warning webhook" }}
+            </button>
+            <button type="button" :disabled="Boolean(debuggingPollStage)" class="rounded-lg border px-3 py-2 text-sm font-bold disabled:opacity-50" @click="debugPolls('finalize')">
+              {{ debuggingPollStage === "finalize" ? "Sending…" : "Test final webhook" }}
+            </button>
+            <button type="button" :disabled="Boolean(debuggingPollStage)" class="rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50" @click="debugPolls('all')">
+              {{ debuggingPollStage === "all" ? "Running…" : "Test complete lifecycle" }}
+            </button>
+          </div>
+        </section>
       </section>
 
       <section class="mt-8" aria-labelledby="all-events-heading">
@@ -254,6 +272,7 @@ type EditableEvent = {
 };
 type UploadStatus = { name: string; state: "pending" | "uploading" | "uploaded" | "failed"; message?: string };
 type PollCategory = "modern" | "classic" | "wildcard";
+type PollDebugStage = "open" | "warning" | "finalize" | "all";
 const pollCategories: PollCategory[] = ["modern", "classic", "wildcard"];
 type PollState = { category: PollCategory; games: string[]; status: string; schedule: { openAt: string; warningAt: string; closeAt: string } | null; lastError: string | null };
 type PollGames = Record<PollCategory, string[]>;
@@ -266,8 +285,11 @@ const pollGames = ref<PollGames>(emptyPollGames());
 const selectedPolls = ref<PollState[]>([]);
 const savingPolls = ref(false);
 const processingPolls = ref(false);
+const debuggingPollStage = ref<PollDebugStage | "">("");
 
+const isDevelopment = import.meta.env.DEV;
 const apiUrl = ref(import.meta.env.DEV ? "" : import.meta.env.VITE_API_URL || "");
+
 type AuthUser = { id: string; username: string; globalName: string | null; avatar: string | null };
 const authUser = ref<AuthUser | null>(null);
 const isAuthenticated = ref(false);
@@ -410,6 +432,22 @@ async function processPolls() {
     error.value = caught instanceof Error ? caught.message : "Unable to process poll schedule.";
   } finally {
     processingPolls.value = false;
+  }
+}
+
+async function debugPolls(stage: PollDebugStage) {
+  if (!selectedSlug.value) return;
+  error.value = "";
+  notice.value = "";
+  debuggingPollStage.value = stage;
+  try {
+    const response = await request(`/api/events/${encodeURIComponent(selectedSlug.value)}/polls/process?debug=${stage}`, { method: "POST" });
+    selectedPolls.value = (await response.json() as { polls: PollState[] }).polls;
+    notice.value = `Development poll ${stage === "all" ? "lifecycle" : stage} webhook sent.`;
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : "Unable to run poll webhook test.";
+  } finally {
+    debuggingPollStage.value = "";
   }
 }
 

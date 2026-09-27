@@ -8,6 +8,8 @@ import {
   cleanString,
 } from "../utils.js";
 
+const DEBUG_POLL_STAGES = new Set(["open", "warning", "finalize", "all"]);
+
 function requireAdmin(request, response, auth) {
   const user = auth.getUser(request);
   if (!user) {
@@ -199,18 +201,20 @@ export function createPollProcessor(
     "UPDATE event_polls SET webhook_message_id = COALESCE(?, webhook_message_id), opened_at = COALESCE(?, opened_at), warning_sent_at = COALESCE(?, warning_sent_at), finalized_at = COALESCE(?, finalized_at), results_json = COALESCE(?, results_json), last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE event_id = ? AND category = ?",
   );
 
-  async function processEvent(event) {
+  async function processEvent(event, { debugStage = null } = {}) {
     const current = now();
     const schedule = pollSchedule(event.eventDate, event.startTime);
     const rows = listPolls.all(event.id);
     for (const row of rows) {
       const games = parseGames(row);
       try {
-        if (
-          !row.webhookMessageId &&
-          current >= schedule.openAt.getTime() &&
-          current < schedule.closeAt.getTime()
-        ) {
+        const shouldOpen =
+          debugStage === "open" ||
+          debugStage === "all" ||
+          (!row.webhookMessageId &&
+            current >= schedule.openAt.getTime() &&
+            current < schedule.closeAt.getTime());
+        if (shouldOpen) {
           const durationHours =
             (schedule.closeAt.getTime() - current) / 3_600_000;
           const messageId = await pollClient.open({
@@ -232,12 +236,14 @@ export function createPollProcessor(
           row.webhookMessageId = messageId;
           row.openedAt = new Date(current).toISOString();
         }
-        if (
-          row.webhookMessageId &&
-          !row.warningSentAt &&
-          current >= schedule.warningAt.getTime() &&
-          current < schedule.closeAt.getTime()
-        ) {
+        const shouldWarn =
+          Boolean(row.webhookMessageId) &&
+          (debugStage === "warning" ||
+            debugStage === "all" ||
+            (!row.warningSentAt &&
+              current >= schedule.warningAt.getTime() &&
+              current < schedule.closeAt.getTime()));
+        if (shouldWarn) {
           await pollClient.warn({
             messageId: row.webhookMessageId,
             eventName: event.name,
@@ -255,11 +261,12 @@ export function createPollProcessor(
           );
           row.warningSentAt = new Date(current).toISOString();
         }
-        if (
-          row.webhookMessageId &&
-          !row.finalizedAt &&
-          current >= schedule.closeAt.getTime()
-        ) {
+        const shouldFinalize =
+          Boolean(row.webhookMessageId) &&
+          (debugStage === "finalize" ||
+            debugStage === "all" ||
+            (!row.finalizedAt && current >= schedule.closeAt.getTime()));
+        if (shouldFinalize) {
           const results = resultsForGames(games, listVoteCounts.all(row.id));
           await pollClient.finalize({
             messageId: row.webhookMessageId,
@@ -514,13 +521,22 @@ export default function registerPolls(app, { db, auth, pollClient }) {
 
   app.post("/events/:slug/polls/process", async (req, res) => {
     if (!requireAdmin(req, res, auth)) return;
+    const debugStage = req.query.debug || null;
+    if (debugStage && process.env.NODE_ENV !== "development") {
+      res.status(404).json({ error: "Not found." });
+      return;
+    }
+    if (debugStage && !DEBUG_POLL_STAGES.has(debugStage)) {
+      res.status(400).json({ error: "Unknown poll debug stage." });
+      return;
+    }
     const event = findEvent.get(req.params.slug);
     if (!event) {
       res.status(404).json({ error: "Event not found." });
       return;
     }
     try {
-      res.json({ polls: await processor.processEvent(event) });
+      res.json({ polls: await processor.processEvent(event, { debugStage }) });
     } catch (error) {
       logger.error(`Failed to process polls for ${event.slug}`, error);
       res.status(502).json({ error: "Unable to process polls." });

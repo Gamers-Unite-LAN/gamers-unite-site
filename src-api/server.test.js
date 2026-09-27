@@ -120,6 +120,62 @@ test("processes poll open, warning, and final lifecycle once", async () => {
   assert.equal(db.prepare("SELECT COUNT(*) AS count FROM event_polls WHERE finalized_at IS NOT NULL").get().count, 3);
   db.close();
 });
+test("runs poll webhook debug lifecycle only in development", async () => {
+  const db = createDatabase(":memory:");
+  const previousAdminIds = process.env.DISCORD_ADMIN_USER_IDS;
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.DISCORD_ADMIN_USER_IDS = "test-admin";
+  process.env.NODE_ENV = "development";
+  const auth = createAuth(db);
+  const session = auth.createSession({ id: "test-admin", username: "Test Admin" });
+  const calls = [];
+  const client = {
+    async open(input) {
+      calls.push(["open", input.category]);
+      return `${input.category}-message`;
+    },
+    async warn(input) {
+      calls.push(["warn", input.category]);
+    },
+    async finalize(input) {
+      calls.push(["finalize", input.category]);
+      return [{ gameName: input.games[0], votes: 0, winner: false }];
+    },
+  };
+  const event = db.prepare("INSERT INTO events (name, slug, event_date, start_time, end_time, season) VALUES (?, ?, ?, ?, ?, ?)").run("Debug LAN", "debug-lan", "2026-07-01", "10:00", "18:00", "summer");
+  for (const category of ["modern", "classic", "wildcard"]) {
+    db.prepare("INSERT INTO event_polls (event_id, category, games_json) VALUES (?, ?, ?)").run(event.lastInsertRowid, category, JSON.stringify(["Halo", "Rust", "Soldat"]));
+  }
+  db.prepare("UPDATE event_polls SET webhook_message_id = ?").run("stale-message");
+  const server = createApiServer(db, createRateLimiter(), null, auth, client);
+  await new Promise((resolve) => server.listen(0, resolve));
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    const debugResponse = await fetch(`${baseUrl}/events/debug-lan/polls/process?debug=all`, {
+      method: "POST",
+      headers: { cookie: `gul_session=${session.token}` },
+    });
+    assert.equal(debugResponse.status, 200);
+    assert.equal(calls.length, 9);
+    assert.equal(db.prepare("SELECT COUNT(*) AS count FROM event_polls WHERE finalized_at IS NOT NULL").get().count, 3);
+
+    process.env.NODE_ENV = "production";
+    const productionResponse = await fetch(`${baseUrl}/events/debug-lan/polls/process?debug=all`, {
+      method: "POST",
+      headers: { cookie: `gul_session=${session.token}` },
+    });
+    assert.equal(productionResponse.status, 404);
+  } finally {
+    if (previousAdminIds === undefined) delete process.env.DISCORD_ADMIN_USER_IDS;
+    else process.env.DISCORD_ADMIN_USER_IDS = previousAdminIds;
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
+    await new Promise((resolve) => server.close(resolve));
+    db.close();
+  }
+});
+
 test("requires Discord login and stores one vote per category", async () => {
   await withServer(async ({ baseUrl, db }) => {
     const eventDate = new Date(Date.now() + 20 * 24 * 60 * 60 * 1_000).toISOString().slice(0, 10);
