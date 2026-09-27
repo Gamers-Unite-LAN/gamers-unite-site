@@ -10,12 +10,13 @@ import { logger } from "./services/logger.js";
 import { validateEvent } from "./endpoints/events.js";
 import { validateGameRecommendation } from "./endpoints/game-recommendations.js";
 import { loadEndpoints } from "./endpoints/index.js";
-import { createPollWebhookClient } from "./services/poll-service.js";
+import { createPollWebhookClient } from "./services/poll.js";
 export {
   getCorsHeaders,
   createRateLimiter,
   validateEvent,
   validateGameRecommendation,
+  createPollWebhookClient,
 };
 
 function createStorageOrNull() {
@@ -96,10 +97,16 @@ export function startServer() {
 
   server.listen(port, () => {
     logger.info(`Gamers Unite API listening on http://localhost:${port}`);
-    server.pollProcessor?.processDue().catch((error) => logger.error("Initial poll processing failed", error));
+    server.pollProcessor
+      ?.processDue()
+      .catch((error) => logger.error("Initial poll processing failed", error));
   });
   const pollInterval = setInterval(() => {
-    server.pollProcessor?.processDue().catch((error) => logger.error("Scheduled poll processing failed", error));
+    server.pollProcessor
+      ?.processDue()
+      .catch((error) =>
+        logger.error("Scheduled poll processing failed", error),
+      );
   }, 60_000);
   pollInterval.unref();
 

@@ -1,6 +1,6 @@
 import { requireJson } from "../middleware.js";
 import { logger } from "../services/logger.js";
-import { createPollWebhookClient } from "../services/poll-service.js";
+import { createPollWebhookClient } from "../services/poll.js";
 import {
   MAX_POLL_GAME_NAME_LENGTH,
   POLL_CATEGORIES,
@@ -484,11 +484,9 @@ export default function registerPolls(app, { db, auth, pollClient }) {
         (Date.now() >= schedule.openAt.getTime() ||
           [...existing.values()].some((row) => row.openedAt))
       ) {
-        res
-          .status(409)
-          .json({
-            error: "Poll games cannot be changed after polling has opened.",
-          });
+        res.status(409).json({
+          error: "Poll games cannot be changed after polling has opened.",
+        });
         return;
       }
       try {
