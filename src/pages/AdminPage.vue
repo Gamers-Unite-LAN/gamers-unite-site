@@ -179,20 +179,20 @@
           </button>
         </div>
         <section v-if="isDevelopment" class="mt-5 rounded-lg border border-dashed border-primary/50 bg-primary/5 p-4" aria-labelledby="poll-debug-heading">
-          <h3 id="poll-debug-heading" class="font-bold">Development webhook tests</h3>
-          <p class="mt-1 text-sm text-muted-foreground">Send the same opening, warning, and final webhook actions used by the API scheduler.</p>
+          <h3 id="poll-debug-heading" class="font-bold">Development Discord bot tests</h3>
+          <p class="mt-1 text-sm text-muted-foreground">Send the same opening, warning, and final bot message actions used by the API scheduler.</p>
           <div class="mt-3 flex flex-wrap gap-2">
             <button type="button" :disabled="Boolean(debuggingPollStage)" class="rounded-lg border px-3 py-2 text-sm font-bold disabled:opacity-50" @click="debugPolls('open')">
-              {{ debuggingPollStage === "open" ? "Sending…" : "Test opening webhook" }}
+              {{ debuggingPollStage === "open" ? "Sending…" : "Test opening message" }}
             </button>
             <button type="button" :disabled="Boolean(debuggingPollStage)" class="rounded-lg border px-3 py-2 text-sm font-bold disabled:opacity-50" @click="debugPolls('update')">
               {{ debuggingPollStage === "update" ? "Updating…" : "Test vote update" }}
             </button>
             <button type="button" :disabled="Boolean(debuggingPollStage)" class="rounded-lg border px-3 py-2 text-sm font-bold disabled:opacity-50" @click="debugPolls('warning')">
-              {{ debuggingPollStage === "warning" ? "Sending…" : "Test warning webhook" }}
+              {{ debuggingPollStage === "warning" ? "Sending…" : "Test warning message" }}
             </button>
             <button type="button" :disabled="Boolean(debuggingPollStage)" class="rounded-lg border px-3 py-2 text-sm font-bold disabled:opacity-50" @click="debugPolls('finalize')">
-              {{ debuggingPollStage === "finalize" ? "Sending…" : "Test final webhook" }}
+              {{ debuggingPollStage === "finalize" ? "Sending…" : "Test final message" }}
             </button>
             <button type="button" :disabled="Boolean(debuggingPollStage)" class="rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50" @click="debugPolls('all')">
               {{ debuggingPollStage === "all" ? "Running…" : "Test complete lifecycle" }}

@@ -1,6 +1,6 @@
 import { requireJson } from "../middleware.js";
 import { logger } from "../services/logger.js";
-import { createPollWebhookClient } from "../services/poll.js";
+import { createPollBotClient } from "../services/poll.js";
 import {
   MAX_POLL_GAME_NAME_LENGTH,
   POLL_CATEGORIES,
@@ -186,7 +186,7 @@ function publicPollState(event, row, counts, voterGameIndex, now) {
 
 export function createPollProcessor(
   db,
-  pollClient = createPollWebhookClient(),
+  pollClient = createPollBotClient(),
   now = () => Date.now(),
 ) {
   const findEvent = db.prepare(

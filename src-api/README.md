@@ -117,9 +117,9 @@ curl -X DELETE http://localhost:3000/api/events/winter-lan-2026 \
 
 ### Discord game polls
 
-The admin page can save exactly three games for each `modern`, `classic`, and `wildcard` category on an event. The public `/polls` page shows the three website polls one calendar month before the event; every vote requires a Discord login and each user can hold one vote per category. The API scheduler sends a Discord webhook announcement when polls open, edits the embed every hour with live vote counts and percentage splits, sends a one-week warning, and edits it with the final vote results and generated SVG winner image one week before the event. The scheduler runs on API startup and every minute thereafter; `POST /api/events/:slug/polls/process` is available to an administrator for a manual retry. In `NODE_ENV=development`, the admin page also exposes buttons for opening, updating votes, warning, finalizing, or running the complete webhook lifecycle immediately.
+The admin page can save exactly three games for each `modern`, `classic`, and `wildcard` category on an event. The public `/polls` page shows the three website polls one calendar month before the event; every vote requires a Discord login and each user can hold one vote per category. The API scheduler uses a Discord bot to post custom PNG poll cards with a website `Vote` button, edits the image every hour with live vote counts and percentage bars, sends a one-week warning, and replaces it with the final PNG results card one week before the event. The cards are generated as SVG and rendered to PNG with `@resvg/resvg-js`. The scheduler runs on API startup and every minute thereafter; `POST /api/events/:slug/polls/process` is available to an administrator for a manual retry. In `NODE_ENV=development`, the admin page also exposes buttons for opening, updating votes, warning, finalizing, or running the complete bot message lifecycle immediately.
 
-Set `DISCORD_POLLS_WEBHOOK_URL` to an HTTPS Discord webhook URL. Keep it private: the URL contains the webhook token and grants permission to post and edit messages. Set `DISCORD_FRONTEND_URL` so webhook announcements link to the deployed `/polls` page. Polls and votes are persisted in SQLite, so restarts do not duplicate messages. If the webhook is temporarily unavailable, the failed lifecycle step is retried on the next scheduler run.
+Set `DISCORD_BOT_TOKEN` to the bot token and `DISCORD_POLLS_CHANNEL_ID` to the channel where poll messages should be posted. The bot needs View Channel, Send Messages, and Attach Files permissions. Keep the bot token private. Set `DISCORD_FRONTEND_URL` so the button links to the deployed `/polls` page. Polls and votes are persisted in SQLite, so restarts do not duplicate messages. If Discord is temporarily unavailable, the failed lifecycle step is retried on the next scheduler run. After switching from webhooks, use the development **Test complete lifecycle** action once to replace existing webhook messages with bot-owned messages.
 
 `GET /api/polls/current` returns the current or next configured poll set. `POST /api/events/:slug/polls/:category/vote` accepts `{ "gameIndex": 0 }` and requires any authenticated Discord session; the admin allowlist is not required for voting.
 
@@ -138,6 +138,9 @@ Polls are scheduled from the event start date/time in UTC. Changing games after 
 
 | Variable | Purpose |
 | --- | --- |
+| `DISCORD_BOT_TOKEN` | Bot token used to post and edit poll messages; keep it secret |
+| `DISCORD_POLLS_CHANNEL_ID` | Discord channel ID where poll messages are posted |
+| `DISCORD_FRONTEND_URL` | Website base URL used by the poll `Vote` button |
 | `S3_BUCKET` | Bucket name, e.g. `gul-images` |
 | `S3_ENDPOINT` | e.g. `https://minio.gamersunitelan.com` (self-hosted) or Hetzner's regional endpoint |
 | `S3_REGION` | Any string is fine for MinIO; use the real region for Hetzner/AWS |

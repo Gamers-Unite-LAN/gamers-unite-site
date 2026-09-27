@@ -10,13 +10,13 @@ import { logger } from "./services/logger.js";
 import { validateEvent } from "./endpoints/events.js";
 import { validateGameRecommendation } from "./endpoints/game-recommendations.js";
 import { loadEndpoints } from "./endpoints/index.js";
-import { createPollWebhookClient } from "./services/poll.js";
+import { createPollBotClient } from "./services/poll.js";
 export {
   getCorsHeaders,
   createRateLimiter,
   validateEvent,
   validateGameRecommendation,
-  createPollWebhookClient,
+  createPollBotClient,
 };
 
 function createStorageOrNull() {
@@ -38,7 +38,7 @@ export function createApiServer(
   rateLimit = createRateLimiter(),
   storage = createStorageOrNull(),
   auth = createAuth(db),
-  pollClient = createPollWebhookClient(),
+  pollClient = createPollBotClient(),
 ) {
   const app = express();
   app.disable("x-powered-by");

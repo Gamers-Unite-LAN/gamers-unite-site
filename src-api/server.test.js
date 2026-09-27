@@ -6,7 +6,7 @@ import {
   createApiServer,
   getCorsHeaders,
   createRateLimiter,
-  createPollWebhookClient,
+  createPollBotClient,
   validateGameRecommendation,
   validateEvent,
 } from "./server.js";
@@ -148,11 +148,13 @@ test("updates open poll results once per hour", async () => {
   db.close();
 });
 
-test("builds poll embeds with vote link and percentage split", async () => {
-  const previousWebhook = process.env.DISCORD_POLLS_WEBHOOK_URL;
+test("builds bot poll messages with vote link and percentage split", async () => {
+  const previousBotToken = process.env.DISCORD_BOT_TOKEN;
+  const previousChannelId = process.env.DISCORD_POLLS_CHANNEL_ID;
   const previousFrontend = process.env.DISCORD_FRONTEND_URL;
   const previousFetch = globalThis.fetch;
-  process.env.DISCORD_POLLS_WEBHOOK_URL = "https://discord.com/api/webhooks/123/token";
+  process.env.DISCORD_BOT_TOKEN = "test-bot-token";
+  process.env.DISCORD_POLLS_CHANNEL_ID = "123";
   process.env.DISCORD_FRONTEND_URL = "https://example.test";
   const requests = [];
   globalThis.fetch = async (url, options) => {
@@ -160,7 +162,7 @@ test("builds poll embeds with vote link and percentage split", async () => {
     return { ok: true, json: async () => ({ id: "message-id" }) };
   };
   try {
-    const client = createPollWebhookClient();
+    const client = createPollBotClient();
     await client.open({
       eventName: "Test LAN",
       category: "modern",
@@ -171,19 +173,27 @@ test("builds poll embeds with vote link and percentage split", async () => {
         { gameName: "Soldat", votes: 0, winner: false },
       ],
     });
-    const payload = JSON.parse(requests[0].options.body);
-    assert.equal(payload.components[0].components[0].url, "https://example.test/polls");
-    assert.deepEqual(payload.embeds[0].fields.map(({ value }) => value), ["2 votes · 66.7%", "1 vote · 33.3%", "0 votes · 0.0%"]);
+    const entries = [...requests[0].options.body.entries()];
+    const payload = JSON.parse(entries.find(([name]) => name === "payload_json")[1]);
+    const image = entries.find(([name]) => name === "files[0]")[1];
+    const imageHeader = [...new Uint8Array(await image.arrayBuffer()).slice(0, 8)];
+    assert.equal(requests[0].url, "https://discord.com/api/v10/channels/123/messages");
+    assert.equal(requests[0].options.headers.authorization, "Bot test-bot-token");
+    assert.doesNotMatch(payload.content, /https?:\/\//);
+    assert.equal(payload.attachments[0].filename, "poll.png");
+    assert.deepEqual(imageHeader, [137, 80, 78, 71, 13, 10, 26, 10]);
   } finally {
     globalThis.fetch = previousFetch;
-    if (previousWebhook === undefined) delete process.env.DISCORD_POLLS_WEBHOOK_URL;
-    else process.env.DISCORD_POLLS_WEBHOOK_URL = previousWebhook;
+    if (previousBotToken === undefined) delete process.env.DISCORD_BOT_TOKEN;
+    else process.env.DISCORD_BOT_TOKEN = previousBotToken;
+    if (previousChannelId === undefined) delete process.env.DISCORD_POLLS_CHANNEL_ID;
+    else process.env.DISCORD_POLLS_CHANNEL_ID = previousChannelId;
     if (previousFrontend === undefined) delete process.env.DISCORD_FRONTEND_URL;
     else process.env.DISCORD_FRONTEND_URL = previousFrontend;
   }
 });
 
-test("runs poll webhook debug lifecycle only in development", async () => {
+test("runs poll bot message lifecycle only in development", async () => {
   const db = createDatabase(":memory:");
   const previousAdminIds = process.env.DISCORD_ADMIN_USER_IDS;
   const previousNodeEnv = process.env.NODE_ENV;
