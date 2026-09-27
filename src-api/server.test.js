@@ -6,8 +6,9 @@ import {
   createApiServer,
   getCorsHeaders,
   createRateLimiter,
-  validateEvent,
+  createPollWebhookClient,
   validateGameRecommendation,
+  validateEvent,
 } from "./server.js";
 import { createPollProcessor, validatePolls } from "./endpoints/polls.js";
 
@@ -101,6 +102,7 @@ test("processes poll open, warning, and final lifecycle once", async () => {
   const calls = [];
   const client = {
     async open(input) { calls.push(["open", input.category]); return `${input.category}-message`; },
+    async updateResults(input) { calls.push(["update", input.category]); },
     async warn(input) { calls.push(["warn", input.category]); },
     async finalize(input) { calls.push(["finalize", input.category]); return [{ gameName: input.games[0], votes: 2, winner: true }]; },
   };
@@ -114,12 +116,73 @@ test("processes poll open, warning, and final lifecycle once", async () => {
   await processor.processEvent(eventRow);
   assert.deepEqual(calls, [
     ["open", "classic"], ["open", "modern"], ["open", "wildcard"],
-    ["warn", "classic"], ["warn", "modern"], ["warn", "wildcard"],
+    ["update", "classic"], ["warn", "classic"],
+    ["update", "modern"], ["warn", "modern"],
+    ["update", "wildcard"], ["warn", "wildcard"],
     ["finalize", "classic"], ["finalize", "modern"], ["finalize", "wildcard"],
   ]);
   assert.equal(db.prepare("SELECT COUNT(*) AS count FROM event_polls WHERE finalized_at IS NOT NULL").get().count, 3);
   db.close();
 });
+test("updates open poll results once per hour", async () => {
+  const db = createDatabase(":memory:");
+  const event = db.prepare("INSERT INTO events (name, slug, event_date, start_time, end_time, season) VALUES (?, ?, ?, ?, ?, ?)").run("Hourly LAN", "hourly-lan", "2026-07-01", "10:00", "18:00", "summer");
+  db.prepare("INSERT INTO event_polls (event_id, category, games_json) VALUES (?, ?, ?)").run(event.lastInsertRowid, "modern", JSON.stringify(["Halo", "Rust", "Soldat"]));
+  const updates = [];
+  const client = {
+    async open(input) { return "hourly-message"; },
+    async updateResults(input) { updates.push(input); },
+  };
+  let current = Date.parse("2026-06-01T10:00:00Z");
+  const processor = createPollProcessor(db, client, () => current);
+  const eventRow = db.prepare("SELECT id, name, slug, event_date AS eventDate, start_time AS startTime FROM events WHERE id = ?").get(event.lastInsertRowid);
+  await processor.processEvent(eventRow);
+  const poll = db.prepare("SELECT id FROM event_polls WHERE event_id = ?").get(event.lastInsertRowid);
+  db.prepare("INSERT INTO poll_votes (poll_id, discord_id, game_index) VALUES (?, ?, ?)").run(poll.id, "voter", 1);
+  current = Date.parse("2026-06-01T11:00:00Z");
+  await processor.processEvent(eventRow);
+  current = Date.parse("2026-06-01T11:30:00Z");
+  await processor.processEvent(eventRow);
+  assert.equal(updates.length, 1);
+  assert.deepEqual(updates[0].results.map(({ votes }) => votes), [0, 1, 0]);
+  db.close();
+});
+
+test("builds poll embeds with vote link and percentage split", async () => {
+  const previousWebhook = process.env.DISCORD_POLLS_WEBHOOK_URL;
+  const previousFrontend = process.env.DISCORD_FRONTEND_URL;
+  const previousFetch = globalThis.fetch;
+  process.env.DISCORD_POLLS_WEBHOOK_URL = "https://discord.com/api/webhooks/123/token";
+  process.env.DISCORD_FRONTEND_URL = "https://example.test";
+  const requests = [];
+  globalThis.fetch = async (url, options) => {
+    requests.push({ url, options });
+    return { ok: true, json: async () => ({ id: "message-id" }) };
+  };
+  try {
+    const client = createPollWebhookClient();
+    await client.open({
+      eventName: "Test LAN",
+      category: "modern",
+      games: ["Halo", "Rust", "Soldat"],
+      results: [
+        { gameName: "Halo", votes: 2, winner: false },
+        { gameName: "Rust", votes: 1, winner: false },
+        { gameName: "Soldat", votes: 0, winner: false },
+      ],
+    });
+    const payload = JSON.parse(requests[0].options.body);
+    assert.equal(payload.components[0].components[0].url, "https://example.test/polls");
+    assert.deepEqual(payload.embeds[0].fields.map(({ value }) => value), ["2 votes · 66.7%", "1 vote · 33.3%", "0 votes · 0.0%"]);
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousWebhook === undefined) delete process.env.DISCORD_POLLS_WEBHOOK_URL;
+    else process.env.DISCORD_POLLS_WEBHOOK_URL = previousWebhook;
+    if (previousFrontend === undefined) delete process.env.DISCORD_FRONTEND_URL;
+    else process.env.DISCORD_FRONTEND_URL = previousFrontend;
+  }
+});
+
 test("runs poll webhook debug lifecycle only in development", async () => {
   const db = createDatabase(":memory:");
   const previousAdminIds = process.env.DISCORD_ADMIN_USER_IDS;
@@ -134,6 +197,9 @@ test("runs poll webhook debug lifecycle only in development", async () => {
       calls.push(["open", input.category]);
       return `${input.category}-message`;
     },
+    async updateResults(input) {
+      calls.push(["update", input.category]);
+    },
     async warn(input) {
       calls.push(["warn", input.category]);
     },
@@ -142,7 +208,7 @@ test("runs poll webhook debug lifecycle only in development", async () => {
       return [{ gameName: input.games[0], votes: 0, winner: false }];
     },
   };
-  const event = db.prepare("INSERT INTO events (name, slug, event_date, start_time, end_time, season) VALUES (?, ?, ?, ?, ?, ?)").run("Debug LAN", "debug-lan", "2026-07-01", "10:00", "18:00", "summer");
+  const event = db.prepare("INSERT INTO events (name, slug, event_date, start_time, end_time, season) VALUES (?, ?, ?, ?, ?, ?)").run("Debug LAN", "debug-lan", "2027-07-01", "10:00", "18:00", "summer");
   for (const category of ["modern", "classic", "wildcard"]) {
     db.prepare("INSERT INTO event_polls (event_id, category, games_json) VALUES (?, ?, ?)").run(event.lastInsertRowid, category, JSON.stringify(["Halo", "Rust", "Soldat"]));
   }
@@ -152,12 +218,19 @@ test("runs poll webhook debug lifecycle only in development", async () => {
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
 
   try {
+    const updateResponse = await fetch(`${baseUrl}/events/debug-lan/polls/process?debug=update`, {
+      method: "POST",
+      headers: { cookie: `gul_session=${session.token}` },
+    });
+    assert.equal(updateResponse.status, 200);
+    assert.equal(calls.length, 3);
+
     const debugResponse = await fetch(`${baseUrl}/events/debug-lan/polls/process?debug=all`, {
       method: "POST",
       headers: { cookie: `gul_session=${session.token}` },
     });
     assert.equal(debugResponse.status, 200);
-    assert.equal(calls.length, 9);
+    assert.equal(calls.length, 15);
     assert.equal(db.prepare("SELECT COUNT(*) AS count FROM event_polls WHERE finalized_at IS NOT NULL").get().count, 3);
 
     process.env.NODE_ENV = "production";

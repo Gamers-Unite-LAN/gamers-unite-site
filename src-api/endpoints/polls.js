@@ -8,7 +8,8 @@ import {
   cleanString,
 } from "../utils.js";
 
-const DEBUG_POLL_STAGES = new Set(["open", "warning", "finalize", "all"]);
+const DEBUG_POLL_STAGES = new Set(["open", "update", "warning", "finalize", "all"]);
+const POLL_RESULTS_UPDATE_INTERVAL_MS = 60 * 60 * 1_000;
 
 function requireAdmin(request, response, auth) {
   const user = auth.getUser(request);
@@ -192,13 +193,13 @@ export function createPollProcessor(
     "SELECT id, name, slug, event_date AS eventDate, start_time AS startTime FROM events WHERE slug = ?",
   );
   const listPolls = db.prepare(
-    "SELECT id, category, games_json AS gamesJson, webhook_message_id AS webhookMessageId, opened_at AS openedAt, warning_sent_at AS warningSentAt, finalized_at AS finalizedAt, results_json AS resultsJson, last_error AS lastError FROM event_polls WHERE event_id = ? ORDER BY category",
+    "SELECT id, category, games_json AS gamesJson, webhook_message_id AS webhookMessageId, opened_at AS openedAt, warning_sent_at AS warningSentAt, finalized_at AS finalizedAt, results_json AS resultsJson, results_updated_at AS resultsUpdatedAt, last_error AS lastError FROM event_polls WHERE event_id = ? ORDER BY category",
   );
   const listVoteCounts = db.prepare(
     "SELECT game_index AS gameIndex, COUNT(*) AS votes FROM poll_votes WHERE poll_id = ? GROUP BY game_index",
   );
   const updatePoll = db.prepare(
-    "UPDATE event_polls SET webhook_message_id = COALESCE(?, webhook_message_id), opened_at = COALESCE(?, opened_at), warning_sent_at = COALESCE(?, warning_sent_at), finalized_at = COALESCE(?, finalized_at), results_json = COALESCE(?, results_json), last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE event_id = ? AND category = ?",
+    "UPDATE event_polls SET webhook_message_id = COALESCE(?, webhook_message_id), opened_at = COALESCE(?, opened_at), warning_sent_at = COALESCE(?, warning_sent_at), finalized_at = COALESCE(?, finalized_at), results_json = COALESCE(?, results_json), results_updated_at = COALESCE(?, results_updated_at), last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE event_id = ? AND category = ?",
   );
 
   async function processEvent(event, { debugStage = null } = {}) {
@@ -217,10 +218,12 @@ export function createPollProcessor(
         if (shouldOpen) {
           const durationHours =
             (schedule.closeAt.getTime() - current) / 3_600_000;
+          const results = resultsForGames(games, listVoteCounts.all(row.id));
           const messageId = await pollClient.open({
             eventName: event.name,
             category: row.category,
             games,
+            results,
             durationHours,
           });
           updatePoll.run(
@@ -229,13 +232,48 @@ export function createPollProcessor(
             null,
             null,
             null,
+            new Date(current).toISOString(),
             null,
             event.id,
             row.category,
           );
           row.webhookMessageId = messageId;
           row.openedAt = new Date(current).toISOString();
+          row.resultsUpdatedAt = new Date(current).toISOString();
         }
+        const lastResultsUpdate =
+          Date.parse(row.resultsUpdatedAt || row.openedAt || "") || 0;
+        const shouldUpdateResults =
+          Boolean(row.webhookMessageId) &&
+          !row.finalizedAt &&
+          (debugStage === "update" ||
+            debugStage === "all" ||
+            current < schedule.closeAt.getTime()) &&
+          (debugStage === "update" ||
+            debugStage === "all" ||
+            current - lastResultsUpdate >= POLL_RESULTS_UPDATE_INTERVAL_MS);
+        if (shouldUpdateResults) {
+          const results = resultsForGames(games, listVoteCounts.all(row.id));
+          await pollClient.updateResults({
+            messageId: row.webhookMessageId,
+            eventName: event.name,
+            category: row.category,
+            results,
+          });
+          updatePoll.run(
+            null,
+            null,
+            null,
+            null,
+            null,
+            new Date(current).toISOString(),
+            null,
+            event.id,
+            row.category,
+          );
+          row.resultsUpdatedAt = new Date(current).toISOString();
+        }
+
         const shouldWarn =
           Boolean(row.webhookMessageId) &&
           (debugStage === "warning" ||
@@ -253,6 +291,7 @@ export function createPollProcessor(
             null,
             null,
             new Date(current).toISOString(),
+            null,
             null,
             null,
             null,
@@ -282,6 +321,7 @@ export function createPollProcessor(
             new Date(current).toISOString(),
             JSON.stringify(results),
             null,
+            null,
             event.id,
             row.category,
           );
@@ -290,6 +330,7 @@ export function createPollProcessor(
         }
         if (row.lastError)
           updatePoll.run(
+            null,
             null,
             null,
             null,
@@ -305,6 +346,7 @@ export function createPollProcessor(
           error,
         );
         updatePoll.run(
+          null,
           null,
           null,
           null,

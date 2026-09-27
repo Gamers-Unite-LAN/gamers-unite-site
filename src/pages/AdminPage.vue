@@ -185,6 +185,9 @@
             <button type="button" :disabled="Boolean(debuggingPollStage)" class="rounded-lg border px-3 py-2 text-sm font-bold disabled:opacity-50" @click="debugPolls('open')">
               {{ debuggingPollStage === "open" ? "Sending…" : "Test opening webhook" }}
             </button>
+            <button type="button" :disabled="Boolean(debuggingPollStage)" class="rounded-lg border px-3 py-2 text-sm font-bold disabled:opacity-50" @click="debugPolls('update')">
+              {{ debuggingPollStage === "update" ? "Updating…" : "Test vote update" }}
+            </button>
             <button type="button" :disabled="Boolean(debuggingPollStage)" class="rounded-lg border px-3 py-2 text-sm font-bold disabled:opacity-50" @click="debugPolls('warning')">
               {{ debuggingPollStage === "warning" ? "Sending…" : "Test warning webhook" }}
             </button>
@@ -272,7 +275,7 @@ type EditableEvent = {
 };
 type UploadStatus = { name: string; state: "pending" | "uploading" | "uploaded" | "failed"; message?: string };
 type PollCategory = "modern" | "classic" | "wildcard";
-type PollDebugStage = "open" | "warning" | "finalize" | "all";
+type PollDebugStage = "open" | "update" | "warning" | "finalize" | "all";
 const pollCategories: PollCategory[] = ["modern", "classic", "wildcard"];
 type PollState = { category: PollCategory; games: string[]; status: string; schedule: { openAt: string; warningAt: string; closeAt: string } | null; lastError: string | null };
 type PollGames = Record<PollCategory, string[]>;

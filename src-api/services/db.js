@@ -101,6 +101,7 @@ export function createDatabase(databasePath = process.env.DATABASE_PATH || defau
       warning_sent_at TEXT,
       finalized_at TEXT,
       results_json TEXT,
+      results_updated_at TEXT,
       last_error TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -108,6 +109,10 @@ export function createDatabase(databasePath = process.env.DATABASE_PATH || defau
       FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE
     )
   `);
+  const pollColumns = db.prepare("PRAGMA table_info(event_polls)").all();
+  if (!pollColumns.some(({ name }) => name === "results_updated_at")) {
+    db.exec("ALTER TABLE event_polls ADD COLUMN results_updated_at TEXT");
+  }
   db.exec(`CREATE INDEX IF NOT EXISTS event_polls_event_id_idx ON event_polls (event_id)`);
   db.exec(`
     CREATE TABLE IF NOT EXISTS poll_votes (

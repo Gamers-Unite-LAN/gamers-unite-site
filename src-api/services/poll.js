@@ -34,6 +34,32 @@ function categoryLabel(category) {
   return category.charAt(0).toUpperCase() + category.slice(1);
 }
 
+function voteUrl() {
+  return `${(process.env.DISCORD_FRONTEND_URL || "https://gamersunitelan.com").replace(/\/$/, "")}/polls`;
+}
+
+function voteComponents() {
+  return [{
+    type: 1,
+    components: [{ type: 2, style: 5, label: "Vote", url: voteUrl() }],
+  }];
+}
+
+function pollEmbed({ eventName, category, results }) {
+  const totalVotes = results.reduce((total, result) => total + result.votes, 0);
+  return {
+    title: `${eventName} — ${categoryLabel(category)} games`,
+    description: "Vote on the website with the button below. Results update hourly.",
+    fields: results.map((result) => ({
+      name: result.gameName,
+      value: `${result.votes} vote${result.votes === 1 ? "" : "s"} · ${totalVotes ? ((result.votes / totalVotes) * 100).toFixed(1) : "0.0"}%`,
+      inline: false,
+    })),
+    footer: { text: "Discord login required to vote" },
+  };
+}
+
+
 function escapeXml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -54,23 +80,31 @@ export function buildPollResultsImage({ eventName, category, results }) {
 
 export function createPollWebhookClient() {
   return {
-    async open({ eventName, category, games }) {
+    async open({ eventName, category, games, results }) {
       const url = webhookUrl();
       if (!url) throw new Error("DISCORD_POLLS_WEBHOOK_URL is not configured.");
-      const voteUrl = `${(process.env.DISCORD_FRONTEND_URL || "https://gamersunitelan.com").replace(/\/$/, "")}/polls`;
       const response = await discordRequest(`${url}?wait=true`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          content: `🎮 ${eventName}: ${categoryLabel(category)} game poll is open! Vote at ${voteUrl}`,
-          embeds: [{
-            title: `${categoryLabel(category)} games`,
-            description: games.map((game, index) => `**${index + 1}. ${game}**`).join("\n"),
-            footer: { text: "Discord login required to vote" },
-          }],
+          content: `🎮 ${eventName}: ${categoryLabel(category)} game poll is open! Vote using the button below.`,
+          embeds: [pollEmbed({ eventName, category, results: results || games.map((gameName) => ({ gameName, votes: 0 })) })],
+          components: voteComponents(),
         }),
       });
       return (await response.json()).id;
+    },
+    async updateResults({ messageId, eventName, category, results }) {
+      const url = webhookUrl();
+      if (!url) throw new Error("DISCORD_POLLS_WEBHOOK_URL is not configured.");
+      await discordRequest(`${url}/messages/${encodeURIComponent(messageId)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          embeds: [pollEmbed({ eventName, category, results })],
+          components: voteComponents(),
+        }),
+      });
     },
     async warn({ messageId, eventName, category }) {
       const url = webhookUrl();
@@ -90,6 +124,7 @@ export function createPollWebhookClient() {
         content: `🏆 ${eventName}: ${categoryLabel(category)} poll results are final! Winner${results.filter((row) => row.winner).length === 1 ? "" : "s"}: ${results.filter((row) => row.winner).map((row) => row.gameName).join(" / ") || "No votes"}`,
         embeds: [{ title: `${categoryLabel(category)} poll results`, image: { url: "attachment://poll-results.svg" } }],
         attachments: [{ id: "0", filename: "poll-results.svg", description: "Generated poll results" }],
+        components: [],
       }));
       form.append("files[0]", new Blob([svg], { type: "image/svg+xml" }), "poll-results.svg");
       await discordRequest(`${url}/messages/${encodeURIComponent(messageId)}`, { method: "PATCH", body: form });
