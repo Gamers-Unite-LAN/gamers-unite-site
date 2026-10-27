@@ -180,9 +180,7 @@ export function createSiteRebuild({
 
   function start() {
     if (!configured) {
-      log.warn(
-        "Site rebuild disabled: set COOLIFY_URL, COOLIFY_TOKEN and SITE_APP_UUID. Local development can ignore this.",
-      );
+      warnMissingConfig();
       return;
     }
 
