@@ -97,27 +97,6 @@ async function applyEnvs(app, envs) {
   console.log(`configured ${envs.length} variable(s) on ${app.name}`);
 }
 
-async function applyScheduledTask(app, task) {
-  const tasks = await api(`/applications/${app.uuid}/scheduled-tasks`);
-  const existing = tasks.find((candidate) => candidate.name === task.name);
-
-  if (dryRun) {
-    console.log(
-      `[dry-run] ${existing ? `PATCH /applications/${app.uuid}/scheduled-tasks/${existing.uuid}` : `POST /applications/${app.uuid}/scheduled-tasks`} ${JSON.stringify(task, null, 2)}`,
-    );
-    return;
-  }
-
-  if (existing) {
-    await api(`/applications/${app.uuid}/scheduled-tasks/${existing.uuid}`, { method: "PATCH", body: task });
-    console.log(`updated scheduled task "${task.name}" on ${app.name}`);
-    return;
-  }
-
-  await api(`/applications/${app.uuid}/scheduled-tasks`, { method: "POST", body: task });
-  console.log(`created scheduled task "${task.name}" on ${app.name}`);
-}
-
 async function deploy(app, label) {
   if (skipDeploy) {
     console.log(`skipped ${label} deployment (SKIP_DEPLOY or --dry-run)`);
@@ -167,30 +146,10 @@ try {
 
   await applyEnvs(apiApp, apiEnvs);
 
-  const siteEnvs = [
+  // The site only needs the build-time API URL; it holds no Coolify credentials.
+  await applyEnvs(siteApp, [
     { key: "VITE_API_URL", value: `${siteUrl}/api`, is_buildtime: true, is_runtime: false },
-    { key: "COOLIFY_API_URL", value: base, is_buildtime: false, is_runtime: true },
-    { key: "SITE_APP_UUID", value: siteApp.uuid, is_buildtime: false, is_runtime: true },
-  ];
-  if (deployToken) {
-    siteEnvs.push({
-      key: "COOLIFY_API_TOKEN",
-      value: deployToken,
-      is_buildtime: false,
-      is_runtime: true,
-      is_shown_once: true,
-    });
-  }
-
-  await applyEnvs(siteApp, siteEnvs);
-
-  await applyScheduledTask(siteApp, {
-    name: "Site rebuild backstop",
-    command: 'wget -q -O /dev/null --header="Authorization: Bearer $COOLIFY_API_TOKEN" --post-data="" "$COOLIFY_API_URL/api/v1/deploy?uuid=$SITE_APP_UUID&force=true"',
-    frequency: "0 3 * * *",
-    timeout: 300,
-    enabled: true,
-  });
+  ]);
 
   // The site build fetches the API, so the API must be deployed first.
   await deploy(apiApp, "api");
