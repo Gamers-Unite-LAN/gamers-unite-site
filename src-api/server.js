@@ -10,6 +10,8 @@ import { logger } from "./logger.js";
 import { validateEvent } from "./endpoints/events.js";
 import { validateGameRecommendation } from "./endpoints/game-recommendations.js";
 import { loadEndpoints } from "./endpoints/index.js";
+import { createNextEventWatcher } from "./nextEventWatcher.js";
+import { createSiteRebuild } from "./siteRebuild.js";
 export {
   getCorsHeaders,
   createRateLimiter,
@@ -36,6 +38,7 @@ export function createApiServer(
   rateLimit = createRateLimiter(),
   storage = createStorageOrNull(),
   auth = createAuth(db),
+  siteRebuild = null,
 ) {
   const app = express();
   app.disable("x-powered-by");
@@ -74,7 +77,7 @@ export function createApiServer(
   });
 
   // Auto-import all endpoint modules from ./endpoints
-  const context = { db, storage, auth };
+  const context = { db, storage, auth, siteRebuild };
   loadEndpoints(app, context);
 
   // Catch-all 404 handler for unmatched routes
@@ -88,15 +91,25 @@ export function createApiServer(
 
 export function startServer() {
   const db = createDatabase();
-  const server = createApiServer(db);
+  const siteRebuild = createSiteRebuild({ db });
+  const server = createApiServer(
+    db,
+    createRateLimiter(),
+    createStorageOrNull(),
+    createAuth(db),
+    siteRebuild,
+  );
   const port = Number(process.env.PORT || 3000);
 
   server.listen(port, () => {
     logger.info(`Gamers Unite API listening on http://localhost:${port}`);
+    siteRebuild.start();
+    createNextEventWatcher({ db, rebuild: siteRebuild }).start();
   });
 
   const shutdown = () => {
     logger.info("Server shutting down gracefully...");
+    siteRebuild.cancel();
     server.close(() => {
       db.close();
       logger.info("Database connection closed. Goodbye.");

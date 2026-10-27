@@ -51,6 +51,22 @@ curl -X POST http://localhost:3000/api/game-recommendations \
 
 `POST /api/game-recommendations` requires `gameName`; `description` and `recommendedBy` are optional. Duplicate ASCII names are rejected case-insensitively. All API requests are limited to 30 requests per IP per minute by default. Set `RATE_LIMIT_MAX` or `RATE_LIMIT_WINDOW_MS` to change this. Requests over the limit return `429` with a `Retry-After` header.
 
+## Next event and static-site rebuilds
+
+`GET /api/next-date` returns the earliest event that has not ended yet, ordered by start time, so an event that is currently running still counts as the next one. It responds `404` with `{"error":"No upcoming events found."}` when there is none, and carries `Cache-Control: public, max-age=60`.
+
+The site renders once at build time, so the API redeploys it whenever the next event changes:
+
+| Variable | Purpose |
+| --- | --- |
+| `COOLIFY_URL` | Public URL of the Coolify instance |
+| `COOLIFY_TOKEN` | Coolify API token with the deploy permission only (secret) |
+| `SITE_APP_UUID` | UUID of the static site app in Coolify |
+
+Creating, updating or deleting an event schedules a rebuild, debounced to one deployment per 30 seconds. A background watcher also compares the current next event with the event the site was last built for (`site_build_state` table), and wakes shortly after that event ends so the site moves on to the following event (or TBA). A rebuild is tracked to completion by polling the Coolify deployment: on success the built event is recorded, on failure it stays pending and is retried after 5 minutes, 15 minutes, then hourly. A pending rebuild is re-requested when the API restarts.
+
+Rebuilds need a single API instance; multiple replicas would each trigger deployments. If the variables above are missing, the API logs a warning and skips rebuilds, which keeps local development working. Rebuilds are a safety net, not the only backstop: keep a daily scheduled task on the site app as a final fallback.
+
 ## Persistence
 
 By default SQLite data persists at `src-api/data/gamers-unite.sqlite`. That path is ignored by Git. Set `DATABASE_PATH` to persist elsewhere. Deployments with ephemeral filesystems will lose local SQLite data on restart, so use persistent disk before relying on recommendations in production.
