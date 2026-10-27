@@ -9,8 +9,8 @@ const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const silent = { info() {}, warn() {}, error() {} };
 const env = {
-  COOLIFY_URL: "https://coolify.test",
-  COOLIFY_TOKEN: "test-token",
+  COOLIFY_API_URL: "https://coolify.test",
+  COOLIFY_API_TOKEN: "test-token",
   SITE_APP_UUID: "site-app-uuid",
 };
 

@@ -59,13 +59,35 @@ The site renders once at build time, so the API redeploys it whenever the next e
 
 | Variable | Purpose |
 | --- | --- |
-| `COOLIFY_URL` | Public URL of the Coolify instance |
-| `COOLIFY_TOKEN` | Coolify API token with the deploy permission only (secret) |
+| `COOLIFY_API_URL` | Public URL of the Coolify instance |
+| `COOLIFY_API_TOKEN` | Coolify API token with the deploy permission only (secret) |
 | `SITE_APP_UUID` | UUID of the static site app in Coolify |
 
 Creating, updating or deleting an event schedules a rebuild, debounced to one deployment per 30 seconds. A background watcher also compares the current next event with the event the site was last built for (`site_build_state` table), and wakes shortly after that event ends so the site moves on to the following event (or TBA). A rebuild is tracked to completion by polling the Coolify deployment: on success the built event is recorded, on failure it stays pending and is retried after 5 minutes, 15 minutes, then hourly. A pending rebuild is re-requested when the API restarts.
 
 Rebuilds need a single API instance; multiple replicas would each trigger deployments. If the variables above are missing, the API logs a warning and skips rebuilds, which keeps local development working. Rebuilds are a safety net, not the only backstop: keep a daily scheduled task on the site app as a final fallback.
+
+Variable names avoid Coolify's predefined `COOLIFY_URL` (which the container already receives as the app's own URL).
+
+### One-command setup
+
+`scripts/setup-coolify.mjs` sets the variables on both apps, adds the daily backstop scheduled task, and deploys the API before the site, since the site build fetches the API. It is idempotent, so re-running it is safe. Tokens cannot be created through the API, so create two in Coolify under **Keys & Tokens** first:
+
+| Token | Abilities | Used by |
+| --- | --- | --- |
+| provisioning | read, write, deploy | the setup script only |
+| deploy | deploy | `COOLIFY_API_TOKEN` in both apps |
+
+```sh
+COOLIFY_API_URL=https://coolify.example.com \
+COOLIFY_PROVISION_TOKEN=... \
+COOLIFY_API_TOKEN=... \
+npm run coolify:setup
+```
+
+`SKIP_DEPLOY=1` configures without deploying; `--dry-run` prints the payloads without changing anything. App names default to `gamers-unite-site-api` and `gamers-unite-site`; override with `API_APP` and `SITE_APP` (UUIDs also work). `VITE_API_URL` is installed as a build-only variable for the site and derived from `SITE_URL`, which defaults to `https://gamersunitelan.com`.
+
+The scheduled task runs `wget` inside the site container (the Nixpacks static image is nginx:alpine, which includes BusyBox wget). If the site image changes, update the task command. Edge caching still needs one check in Cloudflare: HTML must not be cached by a Cache Rule; `/api/next-date` already sends `max-age=60`.
 
 ## Persistence
 

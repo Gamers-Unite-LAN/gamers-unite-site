@@ -44,8 +44,8 @@ export function createSiteRebuild({
   clearTimer = clearTimeout,
   now = Date.now,
 } = {}) {
-  const coolifyUrl = (env.COOLIFY_URL || "").replace(/\/+$/, "");
-  const token = env.COOLIFY_TOKEN || "";
+  const coolifyUrl = (env.COOLIFY_API_URL || "").replace(/\/+$/, "");
+  const token = env.COOLIFY_API_TOKEN || "";
   const siteUuid = env.SITE_APP_UUID || "";
   const configured = Boolean(coolifyUrl && token && siteUuid);
 
@@ -129,7 +129,7 @@ export function createSiteRebuild({
     if (warnedMissingConfig) return;
     warnedMissingConfig = true;
     log.warn(
-      "Site rebuild skipped: set COOLIFY_URL, COOLIFY_TOKEN and SITE_APP_UUID to enable it.",
+      "Site rebuild skipped: set COOLIFY_API_URL, COOLIFY_API_TOKEN and SITE_APP_UUID to enable it.",
     );
   }
 
