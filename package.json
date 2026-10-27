@@ -13,8 +13,7 @@
     "preview": "vite preview",
     "api:dev": "node --watch src-api/dev-server.js",
     "api:start": "node src-api/server.js",
-    "api:test": "node --test src-api/server.test.js src-api/site-rebuild.test.js",
-    "coolify:setup": "node scripts/setup-coolify.mjs"
+    "api:test": "node --test src-api/server.test.js src-api/site-rebuild.test.js"
   },
   "dependencies": {
     "@selemondev/vue3-marquee": "^0.0.8",

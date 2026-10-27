@@ -71,23 +71,13 @@ No cron or scheduled task is needed. The watcher wakes on a data change, shortly
 
 Variable names avoid Coolify's predefined `COOLIFY_URL` (which the container already receives as the app's own URL).
 
-### One-command setup
+### Coolify setup
 
-`scripts/setup-coolify.mjs` sets the variables on both apps and deploys the API before the site, since the site build fetches the API. It is idempotent, so re-running it is safe. Tokens cannot be created through the API, so create two in Coolify under **Keys & Tokens** first:
+Create a token under **Keys & Tokens** with the deploy ability only, then:
 
-| Token | Abilities | Used by |
-| --- | --- | --- |
-| provisioning | read, write, deploy | the setup script only |
-| deploy | deploy | `COOLIFY_API_TOKEN` in the API app |
-
-```sh
-COOLIFY_API_URL=https://coolify.example.com \
-COOLIFY_PROVISION_TOKEN=... \
-COOLIFY_API_TOKEN=... \
-npm run coolify:setup
-```
-
-`SKIP_DEPLOY=1` configures without deploying; `--dry-run` prints the payloads without changing anything. App names default to `gamers-unite-site-api` and `gamers-unite-site`; override with `API_APP` and `SITE_APP` (UUIDs also work). `VITE_API_URL` is installed as a build-only variable for the site and derived from `SITE_URL`, which defaults to `https://gamersunitelan.com`.
+1. **API app → Environment Variables**: `COOLIFY_API_URL` (e.g. `https://coolify.example.com`), `COOLIFY_API_TOKEN` (the deploy token, secret), `SITE_APP_UUID` (UUID of the site app). `src-api/docker-compose.yaml` forwards these three into the container, so they must be set on the app, not only in the compose file.
+2. **Site app → Environment Variables**: `VITE_API_URL=https://gamersunitelan.com/api`, with **Build time** enabled and **Runtime** disabled.
+3. Deploy the API first and wait for it to finish, then deploy the site. The site build fetches `/next-date` from the running API and fails if it cannot reach it.
 
 Edge caching still needs one check in Cloudflare: HTML must not be cached by a Cache Rule; `/api/next-date` already sends `max-age=60`.
 
