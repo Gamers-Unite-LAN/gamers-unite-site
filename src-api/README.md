@@ -51,6 +51,36 @@ curl -X POST http://localhost:3000/api/game-recommendations \
 
 `POST /api/game-recommendations` requires `gameName`; `description` and `recommendedBy` are optional. Duplicate ASCII names are rejected case-insensitively. All API requests are limited to 30 requests per IP per minute by default. Set `RATE_LIMIT_MAX` or `RATE_LIMIT_WINDOW_MS` to change this. Requests over the limit return `429` with a `Retry-After` header.
 
+## Next event and static-site rebuilds
+
+`GET /api/next-date` returns the earliest event that has not ended yet, ordered by start time, so an event that is currently running still counts as the next one. It responds `404` with `{"error":"No upcoming events found."}` when there is none, and carries `Cache-Control: public, max-age=60`.
+
+The site renders once at build time, so the API redeploys it whenever the next event changes:
+
+| Variable | Purpose |
+| --- | --- |
+| `COOLIFY_API_URL` | Public URL of the Coolify instance |
+| `COOLIFY_API_TOKEN` | Coolify API token with the deploy permission only (secret) |
+| `SITE_APP_UUID` | UUID of the static site app in Coolify |
+
+Creating, updating or deleting an event schedules a rebuild, debounced to one deployment per 30 seconds. A background watcher also compares the current next event with the event the site was last built for (`site_build_state` table), and wakes shortly after that event ends so the site moves on to the following event (or TBA). A rebuild is tracked to completion by polling the Coolify deployment: on success the built event is recorded, on failure it stays pending and is retried after 5 minutes, 15 minutes, then hourly. A pending rebuild is re-requested when the API restarts.
+
+Rebuilds need a single API instance; multiple replicas would each trigger deployments. If the variables above are missing, the API logs a warning and skips rebuilds, which keeps local development working.
+
+No cron or scheduled task is needed. The watcher wakes on a data change, shortly after the current event ends, on every failed-deployment retry, and on startup when a rebuild is still pending, so a daily rebuild would only repeat work the API already knows is done. The site container holds no Coolify credentials as a result.
+
+Variable names avoid Coolify's predefined `COOLIFY_URL` (which the container already receives as the app's own URL).
+
+### Coolify setup
+
+Create a token under **Keys & Tokens** with the deploy ability only, then:
+
+1. **API app → Environment Variables**: `COOLIFY_API_URL` (e.g. `https://coolify.example.com`), `COOLIFY_API_TOKEN` (the deploy token, secret), `SITE_APP_UUID` (UUID of the site app). `src-api/docker-compose.yaml` forwards these three into the container, so they must be set on the app, not only in the compose file.
+2. Nothing to configure on the site app. The API is served from `/api` on the site's own origin, and the build derives that URL from Coolify's predefined `COOLIFY_URL`. Set `VITE_API_URL` as a build variable only if the API ever moves to a different host.
+3. Deploy the API first and wait for it to finish, then deploy the site. The site build fetches `/next-date` from the running API and fails if it cannot reach it. The build log prints `[next-event] GET <url> -> <status>`.
+
+Edge caching still needs one check in Cloudflare: HTML must not be cached by a Cache Rule; `/api/next-date` already sends `max-age=60`.
+
 ## Persistence
 
 By default SQLite data persists at `src-api/data/gamers-unite.sqlite`. That path is ignored by Git. Set `DATABASE_PATH` to persist elsewhere. Deployments with ephemeral filesystems will lose local SQLite data on restart, so use persistent disk before relying on recommendations in production.

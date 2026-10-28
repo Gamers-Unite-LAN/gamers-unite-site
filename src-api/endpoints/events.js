@@ -5,6 +5,7 @@ import {
   keyForImage,
 } from "../storage.js";
 import { logger } from "../logger.js";
+import { findNextUpcomingEvent } from "../nextEvent.js";
 import {
   ALLOWED_IMAGE_TYPES,
   cleanString,
@@ -51,10 +52,6 @@ function validateEventTime(value, field, fallback) {
     return { error: `${field} must be in HH:MM format.` };
   }
   return eventTime;
-}
-
-function toEventDateTime(eventDate, eventTime) {
-  return new Date(`${eventDate}T${eventTime}:00`);
 }
 
 function validateEventWindow(startTime, endTime) {
@@ -165,7 +162,7 @@ export function validateEvent(input) {
   };
 }
 
-export default function registerEvents(app, { db, storage, auth }) {
+export default function registerEvents(app, { db, storage, auth, siteRebuild }) {
   const insertEvent = db.prepare(
     `INSERT INTO events (name, slug, event_date, start_time, end_time, season) VALUES (?, ?, ?, ?, ?, ?)`,
   );
@@ -177,12 +174,6 @@ export default function registerEvents(app, { db, storage, auth }) {
     FROM events e
     LEFT JOIN images i ON i.id = e.cover_image_id
     ORDER BY e.event_date DESC, e.start_time DESC, e.id DESC
-  `);
-  const listEventsByStart = db.prepare(`
-    SELECT id, name, slug, event_date AS eventDate,
-      start_time AS startTime, end_time AS endTime, season
-    FROM events
-    ORDER BY event_date ASC, start_time ASC, id ASC
   `);
   const findEventBySlug = db.prepare(`
     SELECT id, name, slug, event_date AS eventDate,
@@ -255,10 +246,10 @@ export default function registerEvents(app, { db, storage, auth }) {
   });
 
   app.get("/next-date", (req, res) => {
-    const now = Date.now();
-    const event = listEventsByStart
-      .all()
-      .find((row) => toEventDateTime(row.eventDate, row.startTime).getTime() >= now);
+    const event = findNextUpcomingEvent(db);
+
+    // Cheap to regenerate; keep any CDN copy shorter than a countdown tick matters.
+    res.set("Cache-Control", "public, max-age=60");
 
     if (!event) {
       res.status(404).json({ error: "No upcoming events found." });
@@ -301,6 +292,7 @@ export default function registerEvents(app, { db, storage, auth }) {
           validation.value.season,
         );
         logger.info(`Event created: "${validation.value.name}" (slug: ${slug}, id: ${result.lastInsertRowid})`);
+        siteRebuild?.requestSiteRebuild();
         res.status(201).json({
           event: {
             id: result.lastInsertRowid,
@@ -347,6 +339,7 @@ export default function registerEvents(app, { db, storage, auth }) {
         validation.value.showCoverImage ? 1 : 0,
         event.id,
       );
+      siteRebuild?.requestSiteRebuild();
       res.json({
         event: {
           name: validation.value.name,
@@ -611,6 +604,7 @@ export default function registerEvents(app, { db, storage, auth }) {
       logger.info(
         `Deleted event "${slug}" and cascaded ${images.length} image(s)`,
       );
+      siteRebuild?.requestSiteRebuild();
       res.status(204).end();
     } catch (error) {
       logger.error(

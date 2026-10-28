@@ -91,5 +91,18 @@ export function createDatabase(databasePath = process.env.DATABASE_PATH || defau
   }
   db.exec(`CREATE INDEX IF NOT EXISTS images_event_id_idx ON images (event_id)`);
 
+  // Which event the deployed static site was last built for. A rebuild is
+  // scheduled whenever the next event differs, and rebuild_pending survives an
+  // API restart so a failed deployment is retried instead of forgotten.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS site_build_state (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      last_built_for_event_id INTEGER,
+      rebuild_pending INTEGER NOT NULL DEFAULT 0,
+      pending_event_id INTEGER
+    );
+    INSERT OR IGNORE INTO site_build_state (id) VALUES (1);
+  `);
+
   return db;
 }

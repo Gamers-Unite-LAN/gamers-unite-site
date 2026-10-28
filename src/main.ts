@@ -6,6 +6,7 @@ import { ViteSSG } from "vite-ssg";
 
 import {
   applyHomepageState,
+  loadHomepageStateForDev,
   type HomepageInitialState,
 } from "./lib/homepageState";
 import { routes } from "./router";
@@ -37,6 +38,11 @@ export const createApp = ViteSSG(App, {
   }
 
   applyHomepageState(initialState.homepage as HomepageInitialState | undefined);
+
+  // Keep the plain Vite dev server working; production hydrates the baked value.
+  if (import.meta.env.DEV && !import.meta.env.SSR) {
+    loadHomepageStateForDev().catch(() => {});
+  }
 });
 
 useDark({
