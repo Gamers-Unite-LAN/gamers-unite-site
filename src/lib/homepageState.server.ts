@@ -24,11 +24,17 @@ function delay(ms: number) {
 }
 
 function apiUrl() {
-  const base = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
-  if (!base) {
-    throw new Error("VITE_API_URL must be set so the build can fetch the next event.");
-  }
-  return base;
+  // The API is served from /api on the site's own origin, so no URL is needed:
+  // Coolify passes the app's public URL to the build as COOLIFY_URL.
+  const override = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+  if (override) return override;
+
+  // COOLIFY_URL holds one or more comma-separated URLs; one is enough here.
+  const siteUrl = (process.env.COOLIFY_URL || "").split(",")[0].trim().replace(/\/$/, "");
+  if (siteUrl) return `${siteUrl}/api`;
+
+  // Local `npm run build` against `npm run api:dev`.
+  return "http://localhost:3000";
 }
 
 async function fetchWithRetry(url: string): Promise<Response> {
@@ -58,8 +64,18 @@ async function fetchWithRetry(url: string): Promise<Response> {
   });
 }
 
-export async function loadHomepageInitialState(): Promise<HomepageInitialState> {
-  const response = await fetchWithRetry(`${apiUrl()}/next-date`);
+let homepageState: Promise<HomepageInitialState> | undefined;
+
+export function loadHomepageInitialState(): Promise<HomepageInitialState> {
+  // The SSG hook runs once per prerendered route; query the API only once.
+  homepageState ??= fetchHomepageInitialState();
+  return homepageState;
+}
+
+async function fetchHomepageInitialState(): Promise<HomepageInitialState> {
+  const url = `${apiUrl()}/next-date`;
+  const response = await fetchWithRetry(url);
+  console.info(`[next-event] GET ${url} -> ${response.status}`);
 
   if (response.status === 404) {
     return { nextEvent: null };

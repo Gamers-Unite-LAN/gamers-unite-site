@@ -76,8 +76,8 @@ Variable names avoid Coolify's predefined `COOLIFY_URL` (which the container alr
 Create a token under **Keys & Tokens** with the deploy ability only, then:
 
 1. **API app → Environment Variables**: `COOLIFY_API_URL` (e.g. `https://coolify.example.com`), `COOLIFY_API_TOKEN` (the deploy token, secret), `SITE_APP_UUID` (UUID of the site app). `src-api/docker-compose.yaml` forwards these three into the container, so they must be set on the app, not only in the compose file.
-2. **Site app → Environment Variables**: `VITE_API_URL=https://gamersunitelan.com/api`, with **Build time** enabled and **Runtime** disabled.
-3. Deploy the API first and wait for it to finish, then deploy the site. The site build fetches `/next-date` from the running API and fails if it cannot reach it.
+2. Nothing to configure on the site app. The API is served from `/api` on the site's own origin, and the build derives that URL from Coolify's predefined `COOLIFY_URL`. Set `VITE_API_URL` as a build variable only if the API ever moves to a different host.
+3. Deploy the API first and wait for it to finish, then deploy the site. The site build fetches `/next-date` from the running API and fails if it cannot reach it. The build log prints `[next-event] GET <url> -> <status>`.
 
 Edge caching still needs one check in Cloudflare: HTML must not be cached by a Cache Rule; `/api/next-date` already sends `max-age=60`.
 
