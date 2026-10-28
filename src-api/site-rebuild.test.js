@@ -24,7 +24,13 @@ function addEvent(db, { name, date, start = "10:00", end = "18:00" }) {
 }
 
 function jsonResponse(payload, status = 200) {
-  return { ok: status < 400, status, json: async () => payload };
+  const body = JSON.stringify(payload);
+  return {
+    ok: status < 400,
+    status,
+    json: async () => payload,
+    text: async () => body,
+  };
 }
 
 function fakeCoolify({ deployStatus = 200, statuses = ["finished"] } = {}) {
@@ -241,6 +247,33 @@ test("Coolify errors are logged, not thrown", async () => {
   await controller.rebuildNow();
   assert.equal(fetchImpl.calls.length, 1);
   assert.equal(getSiteBuildState(db).rebuildPending, true);
+
+  db.close();
+});
+
+test("Coolify failures log the response body", async () => {
+  const db = createDatabase(":memory:");
+  addEvent(db, { name: "Winter LAN", date: "2026-12-05" });
+  const errors = [];
+  const controller = createSiteRebuild({
+    db,
+    env,
+    fetchImpl: fakeCoolify({ deployStatus: 403 }),
+    log: {
+      info() {},
+      warn() {},
+      error(message, error) {
+        errors.push(`${message}: ${error?.message}`);
+      },
+    },
+    sleep: async () => {},
+    setTimer: () => 1,
+    clearTimer: () => {},
+  });
+
+  await controller.rebuildNow();
+  assert.match(errors[0], /403/);
+  assert.match(errors[0], /boom/);
 
   db.close();
 });

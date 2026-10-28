@@ -59,6 +59,13 @@ export function createSiteRebuild({
     return { Authorization: `Bearer ${token}`, Accept: "application/json" };
   }
 
+  // Coolify answers 401 for a bad token and 403 for one missing an ability;
+  // its message body names the reason, so keep it in the log.
+  async function describeFailure(prefix, response) {
+    const body = await response.text().catch(() => "");
+    return `${prefix} (${response.status})${body ? `: ${body.slice(0, 300)}` : ""}`;
+  }
+
   async function deploy() {
     const nextEvent = findNextUpcomingEvent(db);
     const eventId = nextEvent?.id ?? null;
@@ -69,7 +76,7 @@ export function createSiteRebuild({
       { method: "POST", headers: authHeaders() },
     );
     if (!deployResponse.ok) {
-      throw new Error(`Coolify deploy request failed (${deployResponse.status})`);
+      throw new Error(await describeFailure("Coolify deploy request failed", deployResponse));
     }
 
     const payload = await deployResponse.json();
@@ -86,7 +93,7 @@ export function createSiteRebuild({
         { headers: authHeaders() },
       );
       if (!statusResponse.ok) {
-        throw new Error(`Coolify deployment status request failed (${statusResponse.status})`);
+        throw new Error(await describeFailure("Coolify deployment status request failed", statusResponse));
       }
 
       const { status } = await statusResponse.json();
