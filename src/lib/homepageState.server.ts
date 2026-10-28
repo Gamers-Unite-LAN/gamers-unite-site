@@ -58,8 +58,18 @@ async function fetchWithRetry(url: string): Promise<Response> {
   });
 }
 
-export async function loadHomepageInitialState(): Promise<HomepageInitialState> {
-  const response = await fetchWithRetry(`${apiUrl()}/next-date`);
+let homepageState: Promise<HomepageInitialState> | undefined;
+
+export function loadHomepageInitialState(): Promise<HomepageInitialState> {
+  // The SSG hook runs once per prerendered route; query the API only once.
+  homepageState ??= fetchHomepageInitialState();
+  return homepageState;
+}
+
+async function fetchHomepageInitialState(): Promise<HomepageInitialState> {
+  const url = `${apiUrl()}/next-date`;
+  const response = await fetchWithRetry(url);
+  console.info(`[next-event] GET ${url} -> ${response.status}`);
 
   if (response.status === 404) {
     return { nextEvent: null };
