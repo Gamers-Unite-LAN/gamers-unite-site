@@ -26,3 +26,6 @@ src-api/data/
 src-api/db.js
 src-api/.env
 .env
+
+# vite-ssg build scratch
+.vite-ssg-temp

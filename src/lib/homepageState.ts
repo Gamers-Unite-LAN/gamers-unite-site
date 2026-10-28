@@ -23,17 +23,17 @@ export const homepageState = reactive<HomepageInitialState>({
   nextEvent: null,
 });
 
-function endpoint(path: string) {
-  const base = (import.meta.env.DEV ? "" : import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
-  return `${base}${path}`;
-}
-
 export function applyHomepageState(state: HomepageInitialState | null | undefined) {
   homepageState.nextEvent = state?.nextEvent || null;
 }
 
-export async function loadHomepageStateFromApi() {
-  const response = await fetch(endpoint("/api/next-date"));
+/**
+ * Only the SSG build bakes the next event into the HTML. Plain `vite dev` has
+ * no build-time state, so fetch it there; production never refetches.
+ */
+export async function loadHomepageStateForDev() {
+  const base = (import.meta.env.DEV ? "" : import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+  const response = await fetch(`${base}/api/next-date`);
   if (!response.ok) {
     if (response.status === 404) {
       homepageState.nextEvent = null;
@@ -41,7 +41,7 @@ export async function loadHomepageStateFromApi() {
     }
     throw new Error(`Request failed (${response.status}).`);
   }
-  homepageState.nextEvent = await response.json() as NextEvent;
+  homepageState.nextEvent = (await response.json()) as NextEvent;
 }
 
 export function formatEventDate(date: string) {
@@ -62,4 +62,22 @@ export function formatEventTime(time: string) {
   hour %= 12;
   if (hour === 0) hour = 12;
   return minute === "00" ? `${hour}${suffix}` : `${hour}:${minute}${suffix}`;
+}
+
+const londonOffset = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/London",
+  timeZoneName: "longOffset",
+});
+
+/**
+ * Events are stored as wall-clock UK dates and times. Structured data needs an
+ * explicit offset, so resolve it for the Europe/London zone on that day.
+ */
+export function formatEventDateTimeIso(date: string, time: string) {
+  const instant = new Date(`${date}T${time}:00Z`);
+  const zoneName = londonOffset
+    .formatToParts(instant)
+    .find((part) => part.type === "timeZoneName")?.value;
+  const offset = zoneName && zoneName !== "GMT" ? zoneName.replace("GMT", "") : "+00:00";
+  return `${date}T${time}:00${offset}`;
 }

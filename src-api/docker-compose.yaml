@@ -24,6 +24,9 @@ services:
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY} # MinIO password
       PUBLIC_ASSET_URL_BASE: ${PUBLIC_ASSET_URL_BASE}
       S3_FORCE_PATH_STYLE: "true"
+      COOLIFY_API_URL: ${COOLIFY_API_URL}
+      COOLIFY_API_TOKEN: ${COOLIFY_API_TOKEN}
+      SITE_APP_UUID: ${SITE_APP_UUID}
     volumes:
       - api-data:/app/data
 

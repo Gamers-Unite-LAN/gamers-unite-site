@@ -12,7 +12,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed } from "vue";
 import { useHead } from "@unhead/vue";
 import EventCountdown from "../components/LandingPage/EventCountdown.vue";
 import Hero from "../components/LandingPage/Hero.vue";
@@ -26,15 +26,18 @@ import HostThankYouEgg from "@/components/LandingPage/HostThankYouEgg.vue";
 import Quicklook from "@/components/LandingPage/Quicklook.vue";
 import {
   formatEventDate,
+  formatEventDateTimeIso,
   homepageState,
-  loadHomepageStateFromApi,
 } from "@/lib/homepageState";
+
+const EVENT_VENUE = "Highworth Community Centre";
 
 const nextEventDateLabel = computed(() =>
   homepageState.nextEvent ? formatEventDate(homepageState.nextEvent.event.eventDate) : null,
 );
 
 useHead(() => {
+  const nextEvent = homepageState.nextEvent;
   const description = nextEventDateLabel.value
     ? `Join Gamers Unite! LAN in Wiltshire. Our next event is on ${nextEventDateLabel.value}.`
     : "Join Gamers Unite! LAN in Wiltshire for local gaming events, community, and all-day meetups.";
@@ -55,16 +58,32 @@ useHead(() => {
         content: description,
       },
     ],
+    script: nextEvent
+      ? [
+          {
+            type: "application/ld+json",
+            innerHTML: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Event",
+              name: nextEvent.event.name,
+              startDate: formatEventDateTimeIso(nextEvent.event.eventDate, nextEvent.event.startTime),
+              endDate: formatEventDateTimeIso(nextEvent.event.eventDate, nextEvent.event.endTime),
+              eventStatus: "https://schema.org/EventScheduled",
+              location: {
+                "@type": "Place",
+                name: EVENT_VENUE,
+                address: {
+                  "@type": "PostalAddress",
+                  streetAddress: "The Dormers, Highworth",
+                  addressLocality: "Swindon",
+                  postalCode: "SN6 7PQ",
+                  addressCountry: "GB",
+                },
+              },
+            }),
+          },
+        ]
+      : [],
   };
-});
-
-onMounted(async () => {
-  if (homepageState.nextEvent) return;
-
-  try {
-    await loadHomepageStateFromApi();
-  } catch {
-    // Keep the page content stable when the next-event API is unavailable.
-  }
 });
 </script>
