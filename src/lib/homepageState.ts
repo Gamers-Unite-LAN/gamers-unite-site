@@ -32,8 +32,8 @@ export function applyHomepageState(state: HomepageInitialState | null | undefine
  * no build-time state, so fetch it there; production never refetches.
  */
 export async function loadHomepageStateForDev() {
-  const base = (import.meta.env.DEV ? "" : import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
-  const response = await fetch(`${base}/api/next-date`);
+  // Same origin; `vite dev` proxies /api to the local API.
+  const response = await fetch("/api/next-date");
   if (!response.ok) {
     if (response.status === 404) {
       homepageState.nextEvent = null;
